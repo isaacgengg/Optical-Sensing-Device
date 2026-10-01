@@ -59,6 +59,8 @@ ctest --test-dir build/host --output-on-failure
 ./tools/check_layers.sh
 ```
 
+New host tests go in the folder under `firmware/test/host/` that matches the layer of the code they test (`domain/`, `usecase/`, or `adapters/`).
+
 Unity is fetched with CMake `FetchContent` (tag v2.6.1), so the first
 configure needs network access.
 
