@@ -1,0 +1,46 @@
+* text=auto
+
+# Source
+*.c    text eol=lf
+*.h    text eol=lf
+*.sh   text eol=lf
+*.txt  text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+Kconfig* text eol=lf
+sdkconfig* text eol=lf
+
+# KiCad (text formats)
+*.kicad_pcb text eol=lf
+*.kicad_sch text eol=lf
+*.kicad_pro text eol=lf
+*.kicad_sym text eol=lf
+*.kicad_mod text eol=lf
+*.kicad_dru text eol=lf
+*.kicad_wks text eol=lf
+sym-lib-table text eol=lf
+fp-lib-table  text eol=lf
+
+# Gerber / drill outputs
+*.gbr  text eol=lf
+*.gtl  text eol=lf
+*.gbl  text eol=lf
+*.gto  text eol=lf
+*.gbo  text eol=lf
+*.gts  text eol=lf
+*.gbs  text eol=lf
+*.gtp  text eol=lf
+*.gbp  text eol=lf
+*.gm1  text eol=lf
+*.gko  text eol=lf
+*.drl  text eol=lf
+*.xln  text eol=lf
+
+# Binary
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.bmp  binary
+*.zip  binary

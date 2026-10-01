@@ -1,0 +1,25 @@
+# Builds
+build/
+firmware/build/
+firmware/build-*/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/managed_components/
+firmware/dependencies.lock
+*.o
+
+# Editors
+.vscode/*
+!.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# KiCad backups and caches
+*-backups/
+*.kicad_prl
+fp-info-table
+*.lck

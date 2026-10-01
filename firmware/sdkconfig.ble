@@ -1,0 +1,2 @@
+# Layered on top of sdkconfig.defaults: report results over BLE instead of the log.
+CONFIG_DC_SINK_BLE=y

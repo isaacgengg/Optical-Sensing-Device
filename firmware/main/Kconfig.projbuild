@@ -1,0 +1,34 @@
+menu "DetectaChem firmware"
+
+    choice DC_SENSOR
+        prompt "Optical sensor"
+        default DC_SENSOR_MOCK
+
+        config DC_SENSOR_MOCK
+            bool "Mock sensor (replays a fixed table)"
+
+        config DC_SENSOR_AS7341
+            bool "AS7341 (PLACEHOLDER skeleton, part not confirmed)"
+    endchoice
+
+    choice DC_SINK
+        prompt "Result output"
+        default DC_SINK_LOG
+
+        config DC_SINK_LOG
+            bool "Serial log"
+
+        config DC_SINK_BLE
+            bool "BLE (MobileDetect, placeholder format)"
+    endchoice
+
+    config DC_BLE_DEVICE_NAME
+        string "BLE device name"
+        default "DetectaChem-T2"
+
+    config DC_MEASURE_INTERVAL_MS
+        int "Demo loop: milliseconds between measurements"
+        default 5000
+        range 100 3600000
+
+endmenu
