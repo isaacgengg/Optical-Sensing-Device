@@ -34,8 +34,14 @@ target_include_directories(core_host PUBLIC
 target_compile_options(core_host PRIVATE -Wall -Wextra -Werror)
 
 enable_testing()
-foreach(t test_strip_analysis test_measurement test_mock_sensor test_mobiledetect_protocol)
-    add_executable(${t} ${t}.c)
+# Tests mirror the architecture: <layer>/test_<name>.c
+foreach(src
+        domain/test_strip_analysis.c
+        usecase/test_measurement.c
+        adapters/test_mock_sensor.c
+        adapters/test_mobiledetect_protocol.c)
+    get_filename_component(t ${src} NAME_WE)
+    add_executable(${t} ${src})
     target_link_libraries(${t} PRIVATE core_host unity)
     target_compile_options(${t} PRIVATE -Wall -Wextra -Werror)
     add_test(NAME ${t} COMMAND ${t})
