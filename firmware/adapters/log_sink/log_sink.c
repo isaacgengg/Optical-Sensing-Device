@@ -30,8 +30,9 @@ static esp_err_t log_publish(void *ctx, const strip_result_t *result)
     if (result == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
-    ESP_LOGI(TAG, "mode=%s verdict=%s score=%.2f samples=%u",
-             mode_name(result->mode), verdict_name(result->verdict), (double)result->score,
+    ESP_LOGI(TAG, "mode=%s verdict=%s score=%.2f control=%.2f samples=%u",
+             mode_name(result->mode), verdict_name(result->verdict),
+             (double)result->score, (double)result->control_score,
              (unsigned)result->sample_count);
     return ESP_OK;
 }
