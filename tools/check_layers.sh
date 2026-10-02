@@ -16,7 +16,7 @@ report() {  # report <file:line:text> <reason>
 }
 
 # --- 1. core ---
-core_forbidden='freertos/|driver/|esp_driver|esp_log|nimble|host/ble|nvs|i2c_bus|led_gpio|as7341|mock_sensor|ble_mobiledetect|log_sink|mobiledetect_protocol'
+core_forbidden='freertos/|driver/|esp_driver|esp_log|nimble|host/ble|nvs|i2c_bus|led_gpio|as7341|mock_sensor|ble_mobiledetect|log_sink|mobiledetect_protocol|console_input'
 while IFS= read -r hit; do
     report "$hit" "core must not include this"
 done < <(grep -rnE "^[[:space:]]*#[[:space:]]*include[[:space:]]*[<\"][^>\"]*($core_forbidden)" core || true)

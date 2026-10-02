@@ -10,6 +10,7 @@
 #include "measurement.h"
 #include "freertos_timebase.h"
 #include "led_gpio.h"
+#include "console_input.h"
 
 #if CONFIG_DC_SENSOR_AS7341
 #include "i2c_bus.h"
@@ -27,16 +28,32 @@
 static const char *TAG = "main";
 
 static measurement_deps_t s_deps;
+static command_source_t *s_input;
 
-// TODO(team): placeholder measurement parameters. Tune once the optics exist.
-static const measurement_config_t s_cfg = {
-    .integration_ms = 100,
-    .led_intensity_pct = 100,
-    .led_settle_ms = 50,
-    .sample_count = 5,
-    .analysis = {
-        .positive_threshold = 1200.0f,  // TODO(team): placeholder
-        .min_signal = 100.0f,           // TODO(team): placeholder
+// TODO(team): placeholder measurement parameters, one set per test mode.
+// Tune once the optics exist.
+static const measurement_config_t s_cfg[] = {
+    [STRIP_MODE_LATERAL_FLOW] = {
+        .integration_ms = 100,
+        .led_intensity_pct = 100,
+        .led_settle_ms = 50,
+        .sample_count = 5,
+        .analysis = {
+            .mode = STRIP_MODE_LATERAL_FLOW,
+            .positive_threshold = 1200.0f,  // TODO(team): placeholder
+            .min_signal = 100.0f,           // TODO(team): placeholder
+        },
+    },
+    [STRIP_MODE_COLORIMETRIC] = {
+        .integration_ms = 100,
+        .led_intensity_pct = 100,
+        .led_settle_ms = 50,
+        .sample_count = 5,
+        .analysis = {
+            .mode = STRIP_MODE_COLORIMETRIC,
+            .positive_threshold = 1200.0f,  // TODO(team): placeholder
+            .min_signal = 100.0f,           // TODO(team): placeholder
+        },
     },
 };
 
@@ -44,12 +61,15 @@ static void measurement_task(void *arg)
 {
     (void)arg;
     for (;;) {
+        strip_mode_t mode;
         strip_result_t result;
-        esp_err_t err = measurement_run(&s_deps, &s_cfg, &result);
-        if (err != ESP_OK) {
-            ESP_LOGW(TAG, "measurement_run failed: %s", esp_err_to_name(err));
+        esp_err_t err = s_input->wait_request(s_input->ctx, &mode);
+        if (err == ESP_OK) {
+            err = measurement_run(&s_deps, &s_cfg[mode], &result);
         }
-        vTaskDelay(pdMS_TO_TICKS(CONFIG_DC_MEASURE_INTERVAL_MS));
+        if (err != ESP_OK) {
+            ESP_LOGW(TAG, "measurement failed: %s", esp_err_to_name(err));
+        }
     }
 }
 
@@ -86,5 +106,14 @@ void app_main(void)
         return;
     }
 
-    xTaskCreate(measurement_task, "measure", 4096, NULL, 5, NULL);
+    s_input = console_input_create();
+    err = s_input->init(s_input->ctx);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "input init failed: %s", esp_err_to_name(err));
+        return;
+    }
+
+    // 8 KB: measurement_run keeps up to 32 samples (~2.2 KB) on the stack, and
+    // printf of floats in the log sink needs ~1-2 KB more. 4 KB overflowed.
+    xTaskCreate(measurement_task, "measure", 8192, NULL, 5, NULL);
 }
