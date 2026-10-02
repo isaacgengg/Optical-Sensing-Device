@@ -7,8 +7,8 @@
 | Strip types: lateral flow, colorimetric, or both? | | | Answered: both, as separate tests | Two analysis paths in the domain; mode chosen per test at runtime |
 | How is the test mode chosen? | | | Tentative: keypad button on the device | Keypad press sets the mode before each test |
 | Keypad: which part, how many keys, matrix or individual GPIOs? Is there a display or other feedback for the selected mode? | | | | None; no keypad adapter yet |
-| Measurement method: are test and control lines measured separately? | | | | No; one reading of the whole window, placeholder threshold on mean signal. Lateral flow needs separate T and C readings, so the optics must separate them |
-| Lateral flow format: standard (T line = positive) or competitive (T line = negative)? | | | | Standard |
+| Measurement method: are test and control lines measured separately? | | | | Yes, the optics must separate them. Until decided, the use case reads a T sample set then a C sample set from the one sensor (`measurement.c` step 5); `strip_analyze_lateral_flow` takes them separately |
+| Lateral flow format: standard (T line = positive) or competitive (T line = negative)? | | | | Standard (`lfa_format` in `main.c`; both are supported) |
 | Colorimetric: which pad colors map to which results (reference chart or calibration curve)? | | | | None; needs data from DetectaChem |
 | MobileDetect BLE message format, service and characteristic UUIDs? | | | | Placeholder v0 format (`mobiledetect_protocol`), random 128-bit UUIDs |
 | Does MobileDetect need to trigger measurements from the phone? | | | | No; measurements start from device input (`command_source`, keyboard stand-in for now) |

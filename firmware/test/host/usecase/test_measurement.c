@@ -100,6 +100,42 @@ static void test_read_failure_turns_light_off_and_publishes_nothing(void)
     TEST_ASSERT_EQUAL(0, fake_sink_state()->publish_count);
 }
 
+// Rows 0-1 are T samples, rows 2-3 are C samples.
+static const channel_reading_t T_THEN_C[4] = {
+    {.values = {100}, .count = 1},
+    {.values = {300}, .count = 1},
+    {.values = {60}, .count = 1},
+    {.values = {80}, .count = 1},
+};
+
+static void test_lateral_flow_reads_t_then_c(void)
+{
+    deps.sensor = mock_sensor_create(T_THEN_C, 4);
+    cfg.sample_count = 2;
+    cfg.analysis = (strip_config_t){
+        .mode = STRIP_MODE_LATERAL_FLOW, .t_threshold = 150.0f, .c_threshold = 50.0f};
+
+    strip_result_t r;
+    TEST_ASSERT_EQUAL(ESP_OK, measurement_run(&deps, &cfg, &r));
+    TEST_ASSERT_EQUAL_FLOAT(200.0f, r.score);
+    TEST_ASSERT_EQUAL_FLOAT(70.0f, r.control_score);
+    TEST_ASSERT_EQUAL(STRIP_POSITIVE, r.verdict);
+}
+
+static void test_colorimetric_reads_one_set(void)
+{
+    deps.sensor = mock_sensor_create(T_THEN_C, 4);
+    cfg.sample_count = 2;
+    cfg.analysis = (strip_config_t){
+        .mode = STRIP_MODE_COLORIMETRIC, .positive_threshold = 1000.0f, .min_signal = 10.0f};
+
+    strip_result_t r;
+    TEST_ASSERT_EQUAL(ESP_OK, measurement_run(&deps, &cfg, &r));
+    TEST_ASSERT_EQUAL(STRIP_MODE_COLORIMETRIC, r.mode);
+    TEST_ASSERT_EQUAL_FLOAT(200.0f, r.score);  // rows 0-1 only
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, r.control_score);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -108,5 +144,7 @@ int main(void)
     RUN_TEST(test_settle_delay_requested);
     RUN_TEST(test_invalid_sample_count);
     RUN_TEST(test_read_failure_turns_light_off_and_publishes_nothing);
+    RUN_TEST(test_lateral_flow_reads_t_then_c);
+    RUN_TEST(test_colorimetric_reads_one_set);
     return UNITY_END();
 }
