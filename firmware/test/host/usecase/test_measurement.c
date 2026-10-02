@@ -136,6 +136,21 @@ static void test_colorimetric_reads_one_set(void)
     TEST_ASSERT_EQUAL_FLOAT(0.0f, r.control_score);
 }
 
+static void test_default_mock_cycles_lateral_flow_verdicts(void)
+{
+    cfg.sample_count = 5;
+    cfg.analysis = (strip_config_t){  // same thresholds as main.c
+        .mode = STRIP_MODE_LATERAL_FLOW, .t_threshold = 1200.0f, .c_threshold = 100.0f};
+
+    const strip_verdict_t expected[] = {
+        STRIP_POSITIVE, STRIP_NEGATIVE, STRIP_INVALID, STRIP_POSITIVE};
+    for (size_t i = 0; i < 4; i++) {
+        strip_result_t r;
+        TEST_ASSERT_EQUAL(ESP_OK, measurement_run(&deps, &cfg, &r));
+        TEST_ASSERT_EQUAL(expected[i], r.verdict);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -146,5 +161,6 @@ int main(void)
     RUN_TEST(test_read_failure_turns_light_off_and_publishes_nothing);
     RUN_TEST(test_lateral_flow_reads_t_then_c);
     RUN_TEST(test_colorimetric_reads_one_set);
+    RUN_TEST(test_default_mock_cycles_lateral_flow_verdicts);
     return UNITY_END();
 }
