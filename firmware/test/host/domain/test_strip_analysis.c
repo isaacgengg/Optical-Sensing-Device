@@ -70,6 +70,14 @@ static void test_score_is_mean_across_channels(void)
     TEST_ASSERT_EQUAL_size_t(1, r.sample_count);
 }
 
+static void test_result_carries_mode(void)
+{
+    channel_reading_t s[1] = {uniform(50, 4)};
+    strip_config_t cfg = CFG;
+    cfg.mode = STRIP_MODE_COLORIMETRIC;
+    TEST_ASSERT_EQUAL(STRIP_MODE_COLORIMETRIC, strip_analyze(s, 1, &cfg).mode);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -79,5 +87,6 @@ int main(void)
     RUN_TEST(test_low_signal_invalid);
     RUN_TEST(test_threshold_boundaries);
     RUN_TEST(test_score_is_mean_across_channels);
+    RUN_TEST(test_result_carries_mode);
     return UNITY_END();
 }

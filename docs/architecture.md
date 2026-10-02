@@ -62,6 +62,7 @@ port headers; adapters implement them.
 | `illuminator.h` | `led_gpio` |
 | `timebase.h` | `freertos_timebase` |
 | `result_sink.h` | `log_sink`, `ble_mobiledetect` |
+| `command_source.h` | `console_input` (keypad stand-in) |
 
 Ports are named after what they do in *this device* (a sensor, a light, a
 clock, a place results go), not with web-app terms like "repository" or
@@ -106,9 +107,15 @@ unaffected.
   RTOS, driver, BLE, NVS, logging, or adapter headers (only `esp_err.h` from
   ESP-IDF), and adapters may not include each other. CI runs it on every push.
 
-## Planned, not built
+## Input: command_source
 
-A **driving port** (e.g. `core/ports/include/command_source.h`) for commands
-coming from MobileDetect, such as "start measurement". The BLE adapter would
-implement it and the use case would consume it, replacing the fixed-interval
-demo loop in `main.c`. Waiting on the answer in `docs/open-questions.md`.
+`command_source` is the one **driving port**: it tells the device when to
+measure and in which mode (lateral flow or colorimetric). `main.c` waits on
+it, then calls `measurement_run` with that mode's config. For now
+`console_input` implements it with keys typed into `idf.py monitor`
+(`l` = lateral flow, `c` = colorimetric).
+
+To use the real keypad or GPIO buttons: write an adapter that implements
+`command_source_t` (same steps as a sensor driver) and swap it in `main.c`.
+No core changes. If MobileDetect ever triggers measurements, the BLE adapter
+can implement the same port.

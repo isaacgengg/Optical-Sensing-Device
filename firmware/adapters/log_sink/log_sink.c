@@ -15,14 +15,23 @@ static const char *verdict_name(strip_verdict_t v)
     return "?";
 }
 
+static const char *mode_name(strip_mode_t m)
+{
+    switch (m) {
+    case STRIP_MODE_LATERAL_FLOW: return "LATERAL_FLOW";
+    case STRIP_MODE_COLORIMETRIC: return "COLORIMETRIC";
+    }
+    return "?";
+}
+
 static esp_err_t log_publish(void *ctx, const strip_result_t *result)
 {
     (void)ctx;
     if (result == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
-    ESP_LOGI(TAG, "verdict=%s score=%.2f samples=%u",
-             verdict_name(result->verdict), (double)result->score,
+    ESP_LOGI(TAG, "mode=%s verdict=%s score=%.2f samples=%u",
+             mode_name(result->mode), verdict_name(result->verdict), (double)result->score,
              (unsigned)result->sample_count);
     return ESP_OK;
 }

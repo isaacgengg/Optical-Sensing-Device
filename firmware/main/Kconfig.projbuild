@@ -26,9 +26,4 @@ menu "DetectaChem firmware"
         string "BLE device name"
         default "DetectaChem-T2"
 
-    config DC_MEASURE_INTERVAL_MS
-        int "Demo loop: milliseconds between measurements"
-        default 5000
-        range 100 3600000
-
 endmenu

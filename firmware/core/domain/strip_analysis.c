@@ -31,6 +31,9 @@ strip_result_t strip_analyze(const channel_reading_t *samples, size_t n,
     if (samples == NULL || cfg == NULL || n == 0) {
         return result;
     }
+    result.mode = cfg->mode;
+    // ponytail: both modes share the placeholder below. Branch on cfg->mode
+    // once the lateral flow (T/C) and colorimetric algorithms exist.
 
     channel_reading_t avg = strip_average(samples, n);
     if (avg.count == 0) {

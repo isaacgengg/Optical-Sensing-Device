@@ -37,13 +37,42 @@ Or without a local ESP-IDF install:
 docker run --rm -v $PWD/firmware:/project -w /project espressif/idf:v5.5.5 idf.py set-target esp32 build
 ```
 
+## Take a measurement
+
+In `idf.py monitor`, press `l` (lateral flow) or `c` (colorimetric). Each press
+takes one measurement and prints the result (`log_sink: mode=... verdict=...`).
+The serial console stands in for the device keypad.
+
+Quit the monitor with **Ctrl+]**, or **Ctrl+T then Ctrl+X** if your terminal
+doesn't send Ctrl+] (VS Code's often doesn't). Ctrl+C does not quit: it is
+sent to the device as a keypress. If it is stuck, `docker ps` and
+`docker stop <id>` from another terminal.
+
+## Run without hardware (QEMU)
+
+QEMU emulates an ESP32, so the firmware runs on a laptop with no board. From
+the repo root:
+
+```
+docker run --rm -it -u $(id -u):$(id -g) -e HOME=/tmp \
+  -v $PWD/firmware:/project -w /project espressif/idf:v5.5.5 \
+  bash -c "idf.py set-target esp32 && idf.py build && idf.py qemu monitor"
+```
+
+Boot takes a few seconds, then press `l` or `c` as above. `-u` keeps the build
+files owned by you instead of root. With a local ESP-IDF install, run
+`idf.py qemu monitor` inside `firmware/`.
+
+QEMU covers the mock sensor, keyboard input, and serial-log output. It does
+not emulate Bluetooth, so use a devkit for the BLE build.
+
 ## Switch sensor and output
 
 `idf.py menuconfig` → **DetectaChem firmware**:
 
 - *Optical sensor*: Mock (default) or AS7341 (placeholder skeleton)
 - *Result output*: Serial log (default) or BLE
-- BLE device name, measurement interval
+- BLE device name
 
 To build with BLE without menuconfig:
 `idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.ble" build`
