@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optical reader — visualization draft</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #edf1f2;
+      --ink: #193941;
+      --muted: #52696f;
+      --instrument: #193f49;
+      --accent: #ade2d4;
+      --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 1280px; margin: 48px auto; padding: 0 80px; }
+    .masthead { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 48px; }
+    h1 { font-size: 24px; line-height: 1.3; letter-spacing: -.03em; margin: 0; font-weight: 650; }
+    .project { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--accent); font-size: 13px; font-weight: 650; white-space: nowrap; }
+    .status::before { content: ""; width: 8px; height: 8px; background: var(--instrument); }
+    .workspace { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-items: start; }
+    h2 { font-size: 14px; font-weight: 600; margin: 0 0 24px; }
+    .latest { grid-column: span 5; background: var(--instrument); color: #f0f6f7; padding: 24px; }
+    .latest h2 { color: #c1d3d7; }
+    dl { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 0 0 48px; }
+    .verdict-field { grid-column: 1 / -1; }
+    dt { color: #c1d3d7; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    dd { margin: 8px 0 0; font: 28px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+    #verdict { font: 600 clamp(28px, 3.4vw, 40px)/1.2 system-ui, sans-serif; letter-spacing: -.04em; overflow-wrap: anywhere; }
+    button { width: 100%; border: 0; border-radius: 2px; background: var(--accent); color: var(--ink); padding: 16px; font: 600 14px/1.5 system-ui, sans-serif; cursor: pointer; }
+    button:hover { background: #c5eee4; }
+    button:active { background: #93cebf; }
+    button:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+    .instrument-note { margin: 24px 0 0; color: #c1d3d7; font-size: 13px; }
+    .history-section { grid-column: span 7; min-width: 0; padding-top: 24px; }
+    .history-section h2 { font-size: 18px; margin-bottom: 8px; }
+    .table-wrap { overflow: auto; max-height: 432px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    caption { text-align: left; padding-bottom: 24px; color: var(--muted); font-size: 13px; }
+    th, td { padding: 16px 8px; white-space: nowrap; }
+    th { background: #e0e8ea; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+    td:first-child { color: var(--muted); }
+    th:nth-child(n+3), td:nth-child(n+3) { text-align: right; }
+    td:not(:nth-child(2)) { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    tbody tr:nth-child(even) { background: #e5ecee; }
+    tbody tr:first-child:not(#empty) { background: #d8e8e6; }
+    #empty td { white-space: normal; padding: 48px 8px; font: 14px/1.5 system-ui, sans-serif; }
+    .footnote { margin: 24px 0 0; color: var(--muted); font-size: 13px; }
+    @media (max-width: 1000px) { main { padding: 0 32px; } }
+    @media (max-width: 760px) {
+      main { margin: 24px auto; padding: 0 24px; }
+      .masthead { flex-wrap: wrap; margin-bottom: 24px; }
+      .latest, .history-section { grid-column: 1 / -1; }
+      #verdict { font-size: 36px; }
+    }
+    @media (max-width: 360px) { main { padding: 0 16px; } .latest { padding: 24px 16px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <div>
+        <h1>Optical reader</h1>
+        <p class="project">DetectaChem capstone / Development dashboard</p>
+      </div>
+      <span class="status">Simulation mode</span>
+    </header>
+    <div class="workspace">
+    <section class="latest" aria-labelledby="latest-heading">
+      <h2 id="latest-heading">Latest simulated result</h2>
+      <dl aria-live="polite" aria-atomic="true">
+        <div class="verdict-field"><dt>Verdict</dt><dd id="verdict">—</dd></div>
+        <div><dt>Score</dt><dd id="score">—</dd></div>
+        <div><dt>Sample count</dt><dd id="sample-count">—</dd></div>
+      </dl>
+      <button id="generate" type="button">Generate sample result</button>
+      <p class="instrument-note">All values are simulated. No device is connected.</p>
+    </section>
+    <section class="history-section" aria-labelledby="history-heading">
+      <h2 id="history-heading">Result history</h2>
+      <div class="table-wrap">
+        <table>
+          <caption>Simulated results · newest first · resets on reload</caption>
+          <thead><tr><th scope="col">#</th><th scope="col">Verdict</th><th scope="col">Score</th><th scope="col">Samples</th></tr></thead>
+          <tbody id="history"><tr id="empty"><td colspan="4">No results yet. Generate a sample to begin.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    </div>
+    <p class="footnote">Score is a placeholder metric, not confidence, probability, or concentration. Example scores do not define classification thresholds.</p>
+    <noscript><p>Enable JavaScript to generate and display sample results.</p></noscript>
+  </main>
+  <script>
+    // Matches strip_verdict_t in firmware/core/domain/include/strip_types.h.
+    const verdictLabels = ["Negative", "Positive", "Invalid"];
+    // Illustrative fixtures only; scores do not establish classification thresholds.
+    const sampleResults = [
+      { verdict: 0, score: 0.18, sample_count: 8 },
+      { verdict: 1, score: 0.72, sample_count: 8 },
+      { verdict: 2, score: 0.03, sample_count: 8 }
+    ];
+    let resultCount = 0;
+
+    // Shared display entry point. A future BLE decoder can call this after
+    // decoding the versioned payload; this draft has no Bluetooth connection.
+    function handleResult(result) {
+      if (!result || !Number.isInteger(result.verdict) ||
+          result.verdict < 0 || result.verdict >= verdictLabels.length ||
+          !Number.isFinite(result.score) || !Number.isInteger(result.sample_count) ||
+          result.sample_count < 0 || result.sample_count > 65535) {
+        throw new Error("Invalid measurement result");
+      }
+      const label = verdictLabels[result.verdict];
+      const score = result.score.toFixed(3);
+      document.getElementById("verdict").textContent = label;
+      document.getElementById("score").textContent = score;
+      document.getElementById("sample-count").textContent = result.sample_count;
+      document.getElementById("empty")?.remove();
+      const row = document.createElement("tr");
+      for (const value of [++resultCount, label, score, result.sample_count]) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      }
+      document.getElementById("history").prepend(row);
+    }
+
+    document.getElementById("generate").addEventListener("click", () => {
+      handleResult(sampleResults[resultCount % sampleResults.length]);
+    });
+  </script>
+</body>
+</html>
