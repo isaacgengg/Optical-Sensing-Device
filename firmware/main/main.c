@@ -12,9 +12,9 @@
 #include "led_gpio.h"
 #include "console_input.h"
 
-#if CONFIG_DC_SENSOR_AS7341
+#if CONFIG_DC_SENSOR_TCS3448
 #include "i2c_bus.h"
-#include "as7341.h"
+#include "tcs3448.h"
 #else
 #include "mock_sensor.h"
 #endif
@@ -79,14 +79,14 @@ void app_main(void)
     s_deps.time = freertos_timebase_create();
     s_deps.light = led_gpio_create(BOARD_LED_GPIO);
 
-#if CONFIG_DC_SENSOR_AS7341
+#if CONFIG_DC_SENSOR_TCS3448
     i2c_bus_handle_t *bus = i2c_bus_init(BOARD_I2C_PORT, BOARD_I2C_SDA, BOARD_I2C_SCL, BOARD_I2C_HZ);
     if (bus == NULL) {
         ESP_LOGE(TAG, "I2C bus init failed");
         return;
     }
     i2c_bus_scan(bus);
-    s_deps.sensor = as7341_create(bus, BOARD_SENSOR_I2C_ADDR);
+    s_deps.sensor = tcs3448_create(bus, BOARD_SENSOR_I2C_ADDR, s_deps.time);
 #else
     s_deps.sensor = mock_sensor_create(mock_default_table, mock_default_table_len);
 #endif
