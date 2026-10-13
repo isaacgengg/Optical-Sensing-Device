@@ -73,7 +73,7 @@ without calling FreeRTOS, which keeps it host-testable.
 
 - The **domain decides**: given these readings, what is the result? Pure
   functions, trivially testable.
-- The **use case does**: set integration time, light on, wait, read samples,
+- The **use case does**: set integration time, read dark, light on, wait, read samples,
   light off, analyze, publish. It sequences I/O through ports and owns
   timing, but contains no strip rules of its own.
 

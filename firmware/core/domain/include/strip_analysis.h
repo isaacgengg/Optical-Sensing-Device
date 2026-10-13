@@ -6,6 +6,10 @@
 // Per-channel mean of `n` samples. Returns a reading with count = 0 if n == 0.
 channel_reading_t strip_average(const channel_reading_t *samples, size_t n);
 
+// Subtracts `dark` from each of the `n` samples, channel by channel. Results
+// can go slightly negative from noise; they are not clamped.
+void strip_subtract_dark(channel_reading_t *samples, size_t n, const channel_reading_t *dark);
+
 // Turns a set of samples into a verdict. Used for colorimetric strips until
 // the real color analysis exists. See strip_analysis.c (placeholder).
 strip_result_t strip_analyze(const channel_reading_t *samples, size_t n,

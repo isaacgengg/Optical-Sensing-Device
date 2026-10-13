@@ -151,6 +151,45 @@ static void test_default_mock_cycles_lateral_flow_verdicts(void)
     }
 }
 
+// Sensor fake that reads 100 with the light on and 5 with it off, so the
+// result shows which reads happened in the dark.
+static esp_err_t light_aware_read(void *ctx, channel_reading_t *out)
+{
+    (void)ctx;
+    fake_illuminator_state_t *l = fake_illuminator_state();
+    bool on = l->call_count > 0 && l->calls[l->call_count - 1].on;
+    *out = (channel_reading_t){.values = {on ? 100.0f : 5.0f, on ? 200.0f : 5.0f}, .count = 2};
+    return ESP_OK;
+}
+
+static void test_dark_reading_is_taken_with_light_off_and_subtracted(void)
+{
+    optical_sensor_t sensor = {
+        .init = fail_init,
+        .set_integration_ms = fail_set_integration,
+        .read = light_aware_read,
+        .channel_count = 2,
+    };
+    deps.sensor = &sensor;
+    cfg.dark_sample_count = 3;
+    cfg.analysis = (strip_config_t){
+        .mode = STRIP_MODE_LATERAL_FLOW, .t_threshold = 150.0f, .c_threshold = 50.0f};
+
+    strip_result_t r;
+    TEST_ASSERT_EQUAL(ESP_OK, measurement_run(&deps, &cfg, &r));
+    TEST_ASSERT_EQUAL_FLOAT(145.0f, r.score);          // mean(95, 195)
+    TEST_ASSERT_EQUAL_FLOAT(145.0f, r.control_score);
+    TEST_ASSERT_EQUAL_size_t(2, fake_illuminator_state()->call_count);  // still one on/off
+}
+
+static void test_dark_sample_count_too_large(void)
+{
+    strip_result_t r;
+    cfg.dark_sample_count = MEASUREMENT_MAX_SAMPLES + 1;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, measurement_run(&deps, &cfg, &r));
+    TEST_ASSERT_EQUAL_size_t(0, fake_illuminator_state()->call_count);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -162,5 +201,7 @@ int main(void)
     RUN_TEST(test_lateral_flow_reads_t_then_c);
     RUN_TEST(test_colorimetric_reads_one_set);
     RUN_TEST(test_default_mock_cycles_lateral_flow_verdicts);
+    RUN_TEST(test_dark_reading_is_taken_with_light_off_and_subtracted);
+    RUN_TEST(test_dark_sample_count_too_large);
     return UNITY_END();
 }

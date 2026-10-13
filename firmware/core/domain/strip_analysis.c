@@ -2,7 +2,7 @@
 // A line's "signal" is the mean across channels (mean_signal below). A real
 // line darkens the strip, so the real metric is likely absorbance against
 // blank membrane in the bands the line absorbs (gold: ~520-540 nm), plus
-// dark/white calibration. The lateral flow C-then-T rules are real; the
+// white calibration (dark subtraction is strip_subtract_dark). The lateral flow C-then-T rules are real; the
 // colorimetric path (strip_analyze) is a placeholder until DetectaChem's
 // color chart exists. Keep it pure.
 
@@ -26,6 +26,19 @@ channel_reading_t strip_average(const channel_reading_t *samples, size_t n)
         avg.values[c] /= (float)n;
     }
     return avg;
+}
+
+void strip_subtract_dark(channel_reading_t *samples, size_t n, const channel_reading_t *dark)
+{
+    if (samples == NULL || dark == NULL) {
+        return;
+    }
+    for (size_t i = 0; i < n; i++) {
+        size_t count = samples[i].count < dark->count ? samples[i].count : dark->count;
+        for (size_t c = 0; c < count; c++) {
+            samples[i].values[c] -= dark->values[c];
+        }
+    }
 }
 
 // Mean across channels of the averaged samples. False if there are no channels.

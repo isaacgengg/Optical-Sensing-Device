@@ -39,7 +39,8 @@ esp_err_t measurement_run(const measurement_deps_t *deps,
 {
     // 1. Validate.
     if (!deps_valid(deps) || cfg == NULL || out_result == NULL ||
-        cfg->sample_count == 0 || cfg->sample_count > MEASUREMENT_MAX_SAMPLES) {
+        cfg->sample_count == 0 || cfg->sample_count > MEASUREMENT_MAX_SAMPLES ||
+        cfg->dark_sample_count > MEASUREMENT_MAX_SAMPLES) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -52,17 +53,28 @@ esp_err_t measurement_run(const measurement_deps_t *deps,
         return err;
     }
 
-    // 3. Light on.
+    // 3. Dark reading, LED still off. Borrows s_samples[0]; the lit samples
+    // overwrite it in step 6.
+    channel_reading_t dark = {0};
+    if (cfg->dark_sample_count > 0) {
+        err = read_samples(sensor, s_samples[0], cfg->dark_sample_count);
+        if (err != ESP_OK) {
+            return err;
+        }
+        dark = strip_average(s_samples[0], cfg->dark_sample_count);
+    }
+
+    // 4. Light on.
     err = light->set(light->ctx, true, cfg->led_intensity_pct);
     if (err != ESP_OK) {
         light->set(light->ctx, false, 0);
         return err;
     }
 
-    // 4. Settle.
+    // 5. Settle.
     deps->time->delay_ms(deps->time->ctx, cfg->led_settle_ms);
 
-    // 5. Sample. Lateral flow reads a T set, then a C set.
+    // 6. Sample. Lateral flow reads a T set, then a C set.
     // ponytail: stand-in until the optics decide how T and C are captured
     // separately (two sensors, two apertures, or a scan). Only this step changes.
     bool lateral_flow = cfg->analysis.mode == STRIP_MODE_LATERAL_FLOW;
@@ -71,7 +83,7 @@ esp_err_t measurement_run(const measurement_deps_t *deps,
         err = read_samples(sensor, s_samples[1], cfg->sample_count);
     }
 
-    // 6. Light off, always. A read error takes precedence over an off error.
+    // 7. Light off, always. A read error takes precedence over an off error.
     esp_err_t off_err = light->set(light->ctx, false, 0);
     if (err != ESP_OK) {
         return err;
@@ -80,12 +92,14 @@ esp_err_t measurement_run(const measurement_deps_t *deps,
         return off_err;
     }
 
-    // 7. Analyze.
+    // 8. Subtract dark, analyze. dark.count == 0 (skipped) subtracts nothing.
+    strip_subtract_dark(s_samples[0], cfg->sample_count, &dark);
+    strip_subtract_dark(s_samples[1], lateral_flow ? cfg->sample_count : 0, &dark);
     strip_result_t result = lateral_flow
         ? strip_analyze_lateral_flow(s_samples[0], s_samples[1], cfg->sample_count, &cfg->analysis)
         : strip_analyze(s_samples[0], cfg->sample_count, &cfg->analysis);
 
-    // 8. Publish and return.
+    // 9. Publish and return.
     *out_result = result;
     return deps->sink->publish(deps->sink->ctx, &result);
 }

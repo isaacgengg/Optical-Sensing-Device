@@ -19,6 +19,10 @@ typedef struct {
     uint8_t led_intensity_pct;
     uint32_t led_settle_ms;
     size_t sample_count;        // must be <= MEASUREMENT_MAX_SAMPLES
+    // Readings taken with the LED off before each measurement, averaged and
+    // subtracted from every lit reading (removes ambient light and sensor
+    // offset). 0 = skip. Must be <= MEASUREMENT_MAX_SAMPLES.
+    size_t dark_sample_count;
     strip_config_t analysis;
 } measurement_config_t;
 
