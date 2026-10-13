@@ -1,5 +1,5 @@
 // Port: optical sensor. The core owns this interface; sensor adapters
-// (mock_sensor, as7341, ...) implement it.
+// (mock_sensor, tcs3448, ...) implement it.
 #pragma once
 #include <stddef.h>
 #include <stdint.h>

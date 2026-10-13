@@ -7,8 +7,8 @@ menu "DetectaChem firmware"
         config DC_SENSOR_MOCK
             bool "Mock sensor (replays a fixed table)"
 
-        config DC_SENSOR_AS7341
-            bool "AS7341 (PLACEHOLDER skeleton, part not confirmed)"
+        config DC_SENSOR_TCS3448
+            bool "TCS3448 (ams OSRAM, I2C)"
     endchoice
 
     choice DC_SINK
