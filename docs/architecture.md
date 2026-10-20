@@ -58,7 +58,7 @@ port headers; adapters implement them.
 
 | Port | Implemented by |
 |---|---|
-| `optical_sensor.h` | `mock_sensor`, `as7341` (placeholder) |
+| `optical_sensor.h` | `mock_sensor`, `tcs3448` |
 | `illuminator.h` | `led_gpio` |
 | `timebase.h` | `freertos_timebase` |
 | `result_sink.h` | `log_sink`, `ble_mobiledetect` |

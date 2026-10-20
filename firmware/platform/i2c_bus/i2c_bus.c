@@ -1,3 +1,4 @@
+#include <string.h>
 #include "i2c_bus.h"
 #include "driver/i2c_master.h"
 #include "esp_log.h"
@@ -81,13 +82,19 @@ esp_err_t i2c_bus_read_regs(i2c_bus_dev_t *dev, uint8_t reg, uint8_t *buf, size_
 
 esp_err_t i2c_bus_write_reg(i2c_bus_dev_t *dev, uint8_t reg, uint8_t value)
 {
-    if (dev == NULL) {
+    return i2c_bus_write_regs(dev, reg, &value, 1);
+}
+
+esp_err_t i2c_bus_write_regs(i2c_bus_dev_t *dev, uint8_t reg, const uint8_t *buf, size_t len)
+{
+    if (dev == NULL || buf == NULL || len == 0 || len > I2C_BUS_MAX_WRITE) {
         return ESP_ERR_INVALID_ARG;
     }
-    const uint8_t frame[2] = {reg, value};
+    uint8_t frame[1 + I2C_BUS_MAX_WRITE] = {reg};
+    memcpy(&frame[1], buf, len);
     esp_err_t err = ESP_FAIL;
     for (int attempt = 0; attempt < 2 && err != ESP_OK; attempt++) {
-        err = i2c_master_transmit(dev->handle, frame, sizeof(frame), I2C_BUS_TIMEOUT_MS);
+        err = i2c_master_transmit(dev->handle, frame, 1 + len, I2C_BUS_TIMEOUT_MS);
     }
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "write addr=0x%02x reg=0x%02x failed: %s", dev->addr, reg, esp_err_to_name(err));
