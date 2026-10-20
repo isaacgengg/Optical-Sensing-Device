@@ -207,7 +207,13 @@
       connectBtn.disabled = true;
       try {
         if (!device) {
-          device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
+          // Match by name: the board's advertisement carries its name but not the
+          // service UUID, and macOS only matches services that are advertised.
+          // Prefix of CONFIG_DC_BLE_DEVICE_NAME ("DetectaChem-T2" by default).
+          device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: "DetectaChem" }],
+            optionalServices: [SERVICE_UUID],
+          });
           device.addEventListener("gattserverdisconnected", onDisconnected);
         }
         setStatus("Connecting…", false, `Connecting to ${device.name ?? "reader"}…`);
