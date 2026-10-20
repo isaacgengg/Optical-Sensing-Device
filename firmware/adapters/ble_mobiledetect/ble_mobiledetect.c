@@ -17,6 +17,9 @@
 
 static const char *TAG = "ble_md";
 
+// Not in a public ESP-IDF header; ESP-IDF's own examples declare it the same way.
+void ble_store_config_init(void);
+
 // TODO(team): replace with MobileDetect's UUIDs.
 // Random placeholders (bytes are little-endian, as NimBLE expects):
 //   service        c0a5f1d4-5322-444a-8b52-678d10103cfc
@@ -197,6 +200,18 @@ result_sink_t *ble_mobiledetect_create(void)
 
     ble_hs_cfg.sync_cb = on_sync;
     ble_hs_cfg.reset_cb = on_reset;
+    // Bond and keep keys in NVS (CONFIG_BT_NIMBLE_NVS_PERSIST), so a host that
+    // paired once can still reconnect after the board resets. Without this the
+    // host keeps its keys, the board forgets them, and every reconnect fails
+    // with an authentication error (reason 517). No display or buttons, so
+    // "Just Works" pairing. Same setup as ESP-IDF's bleprph example.
+    ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+    ble_hs_cfg.sm_io_cap = BLE_HS_IO_NO_INPUT_OUTPUT;
+    ble_hs_cfg.sm_bonding = 1;
+    ble_hs_cfg.sm_sc = 1;
+    ble_hs_cfg.sm_our_key_dist = BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
+    ble_hs_cfg.sm_their_key_dist = BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
+    ble_store_config_init();
 
     ble_svc_gap_init();
     ble_svc_gatt_init();
