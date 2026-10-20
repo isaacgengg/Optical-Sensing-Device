@@ -10,7 +10,7 @@
 | Measurement method: are test and control lines measured separately? | | | | Yes, the optics must separate them. Until decided, the use case reads a T sample set then a C sample set from the one sensor (`measurement.c` step 5); `strip_analyze_lateral_flow` takes them separately |
 | Lateral flow format: standard (T line = positive) or competitive (T line = negative)? | | | | Standard (`lfa_format` in `main.c`; both are supported) |
 | Colorimetric: which pad colors map to which results (reference chart or calibration curve)? | | | | None; needs data from DetectaChem |
-| MobileDetect BLE message format, service and characteristic UUIDs? | | | | Placeholder v0 format (`mobiledetect_protocol`), random 128-bit UUIDs |
+| MobileDetect BLE message format, service and characteristic UUIDs? | | | | Placeholder v1 format (`mobiledetect_protocol`: mode, verdict, T and C scores, sample count), random 128-bit UUIDs |
 | Does MobileDetect need to trigger measurements from the phone? | | | | No; measurements start from device input (`command_source`, keyboard stand-in for now) |
 | Exact ESP32 variant and final pin assignments? | | | | Plain `esp32` target; placeholder pins in `firmware/main/board.h` |
 | LED: does intensity control matter (PWM) or is on/off enough? | | | | On/off via GPIO (`led_gpio`) |

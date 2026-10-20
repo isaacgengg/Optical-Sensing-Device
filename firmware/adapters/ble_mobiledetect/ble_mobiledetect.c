@@ -37,7 +37,7 @@ static volatile uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 static volatile bool s_notify_enabled;
 static uint16_t s_chr_val_handle;
 static uint8_t s_own_addr_type;
-static uint8_t s_last[MDP_RESULT_V0_LEN];
+static uint8_t s_last[MDP_RESULT_LEN];
 static size_t s_last_len;
 static result_sink_t s_sink;
 

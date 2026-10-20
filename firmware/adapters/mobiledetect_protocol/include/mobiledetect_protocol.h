@@ -6,10 +6,17 @@
 #include <stdint.h>
 #include "strip_types.h"
 
-#define MDP_VERSION 0
+#define MDP_VERSION 1
 
-// v0 layout, little-endian: [version:u8][verdict:u8][score:float32][sample_count:u16]
-#define MDP_RESULT_V0_LEN 8
+// v1 layout, little-endian, 13 bytes:
+//   [0]     version        u8   MDP_VERSION
+//   [1]     mode           u8   strip_mode_t (0 = lateral flow, 1 = colorimetric)
+//   [2]     verdict        u8   strip_verdict_t (0 = negative, 1 = positive, 2 = invalid)
+//   [3..6]  score          f32  lateral flow: T line signal
+//   [7..10] control_score  f32  lateral flow: C line signal; 0 for colorimetric
+//   [11..12] sample_count  u16
+// v0 (8 bytes) had no mode or control_score.
+#define MDP_RESULT_LEN 13
 
 // Returns bytes written, or 0 if `cap` is too small.
 size_t mdp_encode_result(const strip_result_t *r, uint8_t *buf, size_t cap);
