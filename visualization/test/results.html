@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard result regression checks</title>
+<style>
+  body { margin: 24px; font: 16px/1.5 system-ui, sans-serif; }
+  iframe { width: 100%; height: 900px; border: 1px solid #bbb; }
+  .pass { color: #14603c; }
+  .fail { color: #a82020; }
+</style>
+<h1>Dashboard result regression checks</h1>
+<p id="summary" role="status">Running…</p>
+<ol id="checks"></ol>
+<iframe id="dashboard" title="Dashboard under test"></iframe>
+<script>
+  const frame = document.getElementById("dashboard");
+  const lateralBytes = "01 00 00 66 b6 90 44 66 b6 90 44 05 00";
+  const colorBytes = "01 01 00 66 b6 90 44 00 00 00 00 05 00";
+  const view = hex => new DataView(Uint8Array.from(hex.split(" "), n => parseInt(n, 16)).buffer);
+  let passed = 0, failed = 0;
+  function assert(condition, message) {
+    if (!condition) throw new Error(message);
+  }
+  function equal(actual, expected) {
+    assert(JSON.stringify(actual) === JSON.stringify(expected),
+      `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  }
+  function rejects(fn) {
+    let threw = false;
+    try { fn(); } catch { threw = true; }
+    assert(threw, "Expected rejection");
+  }
+  function check(name, fn) {
+    const item = document.createElement("li");
+    try {
+      fn();
+      passed++;
+      item.className = "pass";
+      item.textContent = `PASS: ${name}`;
+    } catch (error) {
+      failed++;
+      item.className = "fail";
+      item.textContent = `FAIL: ${name}: ${error.message}`;
+    }
+    document.getElementById("checks").append(item);
+  }
+  const loaded = new Promise(resolve => frame.addEventListener("load", resolve, { once: true }));
+  frame.src = "../index.html";
+  loaded.then(async () => {
+    let app = frame.contentWindow;
+    let doc = frame.contentDocument;
+    const text = id => doc.getElementById(id).textContent;
+    const rows = () => [...doc.querySelectorAll("#history tr")].map(row =>
+      [...row.cells].map(cell => cell.textContent));
+    const notify = payload => app.onResult({ target: { value: payload } });
+    check("Fresh page has empty history spanning all seven columns", () => {
+      equal(doc.querySelector("#empty td").colSpan, 7);
+      equal(text("test-type"), "—");
+      equal(text("control-score"), "—");
+    });
+    check("Real lateral-flow capture decodes every v1 field", () => {
+      equal(app.decodeResult(view(lateralBytes)), {
+        mode: 0, verdict: 0, score: 1157.699951171875,
+        control_score: 1157.699951171875, sample_count: 5
+      });
+    });
+    check("Real colorimetric capture decodes every v1 field", () => {
+      equal(app.decodeResult(view(colorBytes)), {
+        mode: 1, verdict: 0, score: 1157.699951171875,
+        control_score: 0, sample_count: 5
+      });
+    });
+    check("DataView byte offset, signed scores, and multibyte sample count", () => {
+      // Firmware test vector: score 1, C line -2, samples 0x0102.
+      const bytes = Uint8Array.from([99, 1, 0, 1, 0, 0, 128, 63, 0, 0, 0, 192, 2, 1, 99]);
+      equal(app.decodeResult(new DataView(bytes.buffer, 1, 13)), {
+        mode: 0, verdict: 1, score: 1, control_score: -2, sample_count: 258
+      });
+    });
+    check("Rejects short, long, legacy v0, and unsupported-version packets", () => {
+      for (const length of [0, 8, 12, 14]) {
+        rejects(() => app.decodeResult(new DataView(new ArrayBuffer(length))));
+      }
+      for (const version of [0, 2, 255]) {
+        const payload = view(lateralBytes);
+        payload.setUint8(0, version);
+        rejects(() => app.decodeResult(payload));
+      }
+    });
+    check("Lateral-flow notification updates latest result and history", () => {
+      notify(view(lateralBytes));
+      equal(rows()[0], ["1", "Device", "Lateral flow", "Negative", "1157.700", "1157.700", "5"]);
+      equal(text("test-type"), "Lateral flow");
+      equal(text("score-label"), "T-line score");
+      equal(text("control-score"), "1157.700");
+    });
+    check("Colorimetric notification shows N/A and preserves newest-first history", () => {
+      notify(view(colorBytes));
+      equal(rows()[0], ["2", "Device", "Colorimetric", "Negative", "1157.700", "N/A", "5"]);
+      equal(rows()[1][2], "Lateral flow");
+      equal(text("test-type"), "Colorimetric");
+      equal(text("score-label"), "Score");
+      equal(text("control-score"), "N/A");
+      equal(text("score"), "1157.700");
+      equal(text("sample-count"), "5");
+    });
+    check("Malformed notifications leave history and latest result unchanged", () => {
+      const before = JSON.stringify(rows());
+      const latest = doc.querySelector("dl").textContent;
+      const mutations = [
+        p => p.setUint8(1, 2), p => p.setUint8(2, 3),
+        p => p.setFloat32(3, NaN, true), p => p.setFloat32(3, Infinity, true),
+        p => p.setFloat32(7, NaN, true), p => p.setFloat32(7, -Infinity, true),
+        p => p.setUint8(0, 0)
+      ];
+      for (const mutate of mutations) {
+        const payload = view(lateralBytes);
+        mutate(payload);
+        notify(payload);
+        equal(JSON.stringify(rows()), before);
+        equal(doc.querySelector("dl").textContent, latest);
+        assert(text("note").startsWith("Ignored a malformed result:"), "Missing error message");
+      }
+      notify(new DataView(new ArrayBuffer(8)));
+      equal(JSON.stringify(rows()), before);
+      equal(doc.querySelector("dl").textContent, latest);
+    });
+    check("Shared entry point rejects missing/invalid fields before display changes", () => {
+      const valid = app.decodeResult(view(lateralBytes));
+      const before = JSON.stringify(rows());
+      for (const patch of [
+        { mode: undefined }, { mode: 0.5 }, { mode: -1 },
+        { verdict: 0.5 }, { verdict: -1 }, { control_score: undefined },
+        { score: "1" }, { sample_count: -1 }, { sample_count: 65536 },
+        { sample_count: 1.5 }
+      ]) rejects(() => app.handleResult({ ...valid, ...patch }));
+      equal(JSON.stringify(rows()), before);
+    });
+    check("Simulated results still cycle and populate all seven columns", () => {
+      for (let i = 0; i < 3; i++) doc.getElementById("generate").click();
+      equal(rows().slice(0, 3).map(row => row[3]), ["Positive", "Negative", "Invalid"]);
+      equal(rows()[0], ["5", "Simulated", "Colorimetric", "Positive", "0.720", "N/A", "8"]);
+      equal(text("control-score"), rows()[0][5]);
+    });
+    check("Zero and maximum sample counts remain valid", () => {
+      const payload = view(lateralBytes);
+      for (const count of [0, 65535]) {
+        payload.setUint16(11, count, true);
+        notify(payload);
+        equal(rows()[0][6], String(count));
+      }
+    });
+    const reloaded = new Promise(resolve => frame.addEventListener("load", resolve, { once: true }));
+    frame.src = "../index.html?reload-check";
+    await reloaded;
+    app = frame.contentWindow;
+    doc = frame.contentDocument;
+    check("Reload clears history and all latest-result fields", () => {
+      assert(doc.getElementById("empty"), "History did not reset");
+      for (const id of ["verdict", "test-type", "score", "control-score", "sample-count"]) {
+        equal(text(id), "—");
+      }
+    });
+    // Leave both captured results visible for visual inspection.
+    notify(view(lateralBytes));
+    notify(view(colorBytes));
+    document.getElementById("summary").textContent = `${passed} passed, ${failed} failed`;
+  });
+</script>
+</html>

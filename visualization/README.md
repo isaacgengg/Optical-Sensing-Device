@@ -35,8 +35,10 @@ error, remove the device from your computer's Bluetooth settings and pair again.
 ## Scope
 
 - Connection status: simulation mode, connected, or disconnected.
-- Latest verdict, numeric score, and sample count.
+- Latest test type, verdict, numeric score, C-line score, and sample count.
 - History table of device and simulated results, newest first.
+- Lateral-flow scores show the T-line and C-line signals. Colorimetric results
+  show the score and **N/A** for C line.
 
 All data is illustrative. Scores are placeholder metrics, not confidence,
 concentration, or validated classification thresholds. The page does not
@@ -47,26 +49,53 @@ perform strip analysis or communicate with MobileDetect.
 The display entry point `handleResult(result)` accepts:
 
 ```javascript
-{ verdict: 0, score: 0.18, sample_count: 8 }
+{ mode: 0, verdict: 0, score: 0.18, control_score: 0.85, sample_count: 8 }
 ```
 
 Verdict values match `strip_verdict_t` in
 `firmware/core/domain/include/strip_types.h`: 0 = negative, 1 = positive,
 2 = invalid.
 
-These fields match the current placeholder result payload in
-`firmware/adapters/mobiledetect_protocol/`: version (u8), verdict (u8),
-score (little-endian float32), sample count (little-endian u16), totaling
-8 bytes. The payload does not include test mode, control score, or raw channels.
+Mode values match `strip_mode_t`: 0 = lateral flow, 1 = colorimetric.
+Both scores must be finite numbers; mode and verdict must be recognized
+integers, and sample count must be an integer from 0 to 65535.
+
+The current placeholder v1 payload in `firmware/adapters/mobiledetect_protocol/`
+is 13 bytes, with multibyte fields encoded little-endian:
+
+| Offset | Field | Type |
+| --- | --- | --- |
+| 0 | Version (`1`) | u8 |
+| 1 | Mode | u8 |
+| 2 | Verdict | u8 |
+| 3–6 | Score (T-line signal for lateral flow) | float32 |
+| 7–10 | Control score (C-line signal; zero for colorimetric) | float32 |
+| 11–12 | Sample count | u16 |
 
 The page's BLE receiver (`decodeResult`) checks the payload length and version,
 decodes the fields, and passes the result to `handleResult`. The service and
-characteristic UUIDs must match `firmware/adapters/ble_mobiledetect/`. Because
-the payload has no test mode or control score, the page cannot show them yet.
+characteristic UUIDs must match `firmware/adapters/ble_mobiledetect/`.
+Older v0 messages and malformed results are rejected without changing the
+latest result or history.
+
+## Decoder regression checks
+
+With the server running, open http://localhost:8000/test/results.html and
+confirm all checks pass. No device or test dependencies are needed. These checks
+exercise the actual page in an iframe with the real board captures from
+[PR #7](https://github.com/isaacgengg/Optical-Sensing-Device/pull/7):
+
+- Lateral flow: `01 00 00 66 b6 90 44 66 b6 90 44 05 00`
+- Colorimetric: `01 01 00 66 b6 90 44 00 00 00 00 05 00`
+
+Both decode to negative, score approximately 1157.7, and 5 samples.
+The lateral-flow C-line score is approximately 1157.7; the colorimetric
+control score is zero and displays as N/A.
 
 ## Quick manual check
 
 1. Serve the folder and open http://localhost:8000; confirm simulation mode and the empty history message.
 2. Click the button three times; confirm negative, positive, and invalid results.
-3. Check that each result matches the newest history row.
+3. Check that each result matches the newest history row, including test type
+   and C line. The colorimetric sample should show N/A for C line.
 4. Reload; confirm that the latest result and history are reset.

@@ -24,10 +24,12 @@
     .status::before { content: ""; width: 8px; height: 8px; background: var(--instrument); }
     .workspace { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-items: start; }
     h2 { font-size: 14px; font-weight: 600; margin: 0 0 24px; }
-    .latest { grid-column: span 5; background: var(--instrument); color: #f0f6f7; padding: 24px; }
+    .latest { grid-column: span 4; background: var(--instrument); color: #f0f6f7; padding: 24px; }
     .latest h2 { color: #c1d3d7; }
-    dl { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 0 0 48px; }
+    dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 24px; margin: 0 0 48px; }
     .verdict-field { grid-column: 1 / -1; }
+    .test-type-field { grid-column: 1 / -1; }
+    #test-type { font: 18px/1.3 system-ui, sans-serif; }
     dt { color: #c1d3d7; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
     dd { margin: 8px 0 0; font: 28px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
     #verdict { font: 600 clamp(28px, 3.4vw, 40px)/1.2 system-ui, sans-serif; letter-spacing: -.04em; overflow-wrap: anywhere; }
@@ -42,7 +44,7 @@
     button.secondary:hover { background: #24505b; }
     button:disabled { opacity: .5; cursor: not-allowed; }
     .instrument-note { margin: 24px 0 0; color: #c1d3d7; font-size: 13px; }
-    .history-section { grid-column: span 7; min-width: 0; padding-top: 24px; }
+    .history-section { grid-column: span 8; min-width: 0; padding-top: 24px; }
     .history-section h2 { font-size: 18px; margin-bottom: 8px; }
     .table-wrap { overflow: auto; max-height: 432px; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
@@ -50,14 +52,13 @@
     th, td { padding: 16px 8px; white-space: nowrap; }
     th { background: #e0e8ea; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
     td:first-child { color: var(--muted); }
-    th:nth-child(n+4), td:nth-child(n+4) { text-align: right; }
-    td:not(:nth-child(2)):not(:nth-child(3)) { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    th:nth-child(n+5), td:nth-child(n+5) { text-align: right; }
+    td:first-child, td:nth-child(n+5) { font-family: var(--mono); font-variant-numeric: tabular-nums; }
     tbody tr:nth-child(even) { background: #e5ecee; }
     tbody tr:first-child:not(#empty) { background: #d8e8e6; }
     #empty td { white-space: normal; padding: 48px 8px; font: 14px/1.5 system-ui, sans-serif; }
     .footnote { margin: 24px 0 0; color: var(--muted); font-size: 13px; }
-    @media (max-width: 1000px) { main { padding: 0 32px; } }
-    @media (max-width: 760px) {
+    @media (max-width: 1000px) {
       main { margin: 24px auto; padding: 0 24px; }
       .masthead { flex-wrap: wrap; margin-bottom: 24px; }
       .latest, .history-section { grid-column: 1 / -1; }
@@ -80,7 +81,9 @@
       <h2 id="latest-heading">Latest result</h2>
       <dl aria-live="polite" aria-atomic="true">
         <div class="verdict-field"><dt>Verdict</dt><dd id="verdict">—</dd></div>
-        <div><dt>Score</dt><dd id="score">—</dd></div>
+        <div class="test-type-field"><dt>Test type</dt><dd id="test-type">—</dd></div>
+        <div><dt id="score-label">Score / T line</dt><dd id="score">—</dd></div>
+        <div><dt>C-line score</dt><dd id="control-score">—</dd></div>
         <div><dt>Sample count</dt><dd id="sample-count">—</dd></div>
       </dl>
       <div class="actions">
@@ -94,43 +97,51 @@
       <div class="table-wrap">
         <table>
           <caption>Newest first · resets on reload</caption>
-          <thead><tr><th scope="col">#</th><th scope="col">Source</th><th scope="col">Verdict</th><th scope="col">Score</th><th scope="col">Samples</th></tr></thead>
-          <tbody id="history"><tr id="empty"><td colspan="5">No results yet. Connect a device or generate a sample.</td></tr></tbody>
+          <thead><tr><th scope="col">#</th><th scope="col">Source</th><th scope="col">Test type</th><th scope="col">Verdict</th><th scope="col">Score / T line</th><th scope="col">C line</th><th scope="col">Samples</th></tr></thead>
+          <tbody id="history"><tr id="empty"><td colspan="7">No results yet. Connect a device or generate a sample.</td></tr></tbody>
         </table>
       </div>
     </section>
     </div>
-    <p class="footnote">Score is a placeholder metric, not confidence, probability, or concentration. Example scores do not define classification thresholds.</p>
+    <p class="footnote">For lateral flow, score is the T-line signal and C line is the control signal. C line is not applicable (N/A) for colorimetric tests. Scores are placeholder metrics, not confidence, probability, or concentration. Example scores do not define classification thresholds.</p>
     <noscript><p>Enable JavaScript to generate and display sample results.</p></noscript>
   </main>
   <script>
     // Matches strip_verdict_t in firmware/core/domain/include/strip_types.h.
     const verdictLabels = ["Negative", "Positive", "Invalid"];
+    const modeLabels = ["Lateral flow", "Colorimetric"];
     // Illustrative fixtures only; scores do not establish classification thresholds.
     const sampleResults = [
-      { verdict: 0, score: 0.18, sample_count: 8 },
-      { verdict: 1, score: 0.72, sample_count: 8 },
-      { verdict: 2, score: 0.03, sample_count: 8 }
+      { mode: 0, verdict: 0, score: 0.18, control_score: 0.85, sample_count: 8 },
+      { mode: 1, verdict: 1, score: 0.72, control_score: 0, sample_count: 8 },
+      { mode: 0, verdict: 2, score: 0.03, control_score: 0.02, sample_count: 8 }
     ];
     let resultCount = 0;
 
-    // Shared display entry point. A future BLE decoder can call this after
-    // decoding the versioned payload; this draft has no Bluetooth connection.
+    // Shared display entry point for decoded BLE results and simulated fixtures.
     function handleResult(result, source = "Simulated") {
-      if (!result || !Number.isInteger(result.verdict) ||
+      if (!result || !Number.isInteger(result.mode) ||
+          result.mode < 0 || result.mode >= modeLabels.length ||
+          !Number.isInteger(result.verdict) ||
           result.verdict < 0 || result.verdict >= verdictLabels.length ||
-          !Number.isFinite(result.score) || !Number.isInteger(result.sample_count) ||
+          !Number.isFinite(result.score) || !Number.isFinite(result.control_score) ||
+          !Number.isInteger(result.sample_count) ||
           result.sample_count < 0 || result.sample_count > 65535) {
         throw new Error("Invalid measurement result");
       }
       const label = verdictLabels[result.verdict];
+      const mode = modeLabels[result.mode];
       const score = result.score.toFixed(3);
+      const controlScore = result.mode === 0 ? result.control_score.toFixed(3) : "N/A";
       document.getElementById("verdict").textContent = label;
+      document.getElementById("test-type").textContent = mode;
+      document.getElementById("score-label").textContent = result.mode === 0 ? "T-line score" : "Score";
       document.getElementById("score").textContent = score;
+      document.getElementById("control-score").textContent = controlScore;
       document.getElementById("sample-count").textContent = result.sample_count;
       document.getElementById("empty")?.remove();
       const row = document.createElement("tr");
-      for (const value of [++resultCount, source, label, score, result.sample_count]) {
+      for (const value of [++resultCount, source, mode, label, score, controlScore, result.sample_count]) {
         const cell = document.createElement("td");
         cell.textContent = value;
         row.appendChild(cell);
@@ -146,19 +157,26 @@
     // Must match firmware/adapters/ble_mobiledetect/ble_mobiledetect.c.
     const SERVICE_UUID = "c0a5f1d4-5322-444a-8b52-678d10103cfc";
     const RESULT_UUID = "5407ab56-5c25-47f7-8ce3-71a01d48ad11";
-    const PAYLOAD_VERSION = 0;  // MDP_VERSION
-    const PAYLOAD_LEN = 8;      // MDP_RESULT_V0_LEN
+    const PAYLOAD_VERSION = 1;  // MDP_VERSION
+    const PAYLOAD_LEN = 13;     // MDP_RESULT_LEN
     const statusEl = document.getElementById("status");
     const noteEl = document.getElementById("note");
     const connectBtn = document.getElementById("connect");
     let device = null;
 
-    // v0 layout, little-endian: [version:u8][verdict:u8][score:f32][sample_count:u16]
+    // v1, little-endian: version:u8, mode:u8, verdict:u8, score:f32,
+    // control_score:f32, sample_count:u16.
     function decodeResult(view) {
       if (view.byteLength !== PAYLOAD_LEN) throw new Error(`Expected ${PAYLOAD_LEN} bytes, got ${view.byteLength}`);
       const version = view.getUint8(0);
       if (version !== PAYLOAD_VERSION) throw new Error(`Unsupported payload version ${version}`);
-      return { verdict: view.getUint8(1), score: view.getFloat32(2, true), sample_count: view.getUint16(6, true) };
+      return {
+        mode: view.getUint8(1),
+        verdict: view.getUint8(2),
+        score: view.getFloat32(3, true),
+        control_score: view.getFloat32(7, true),
+        sample_count: view.getUint16(11, true)
+      };
     }
 
     function setStatus(text, live, note) {
