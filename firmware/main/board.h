@@ -7,4 +7,4 @@
 #define BOARD_I2C_SCL    22
 #define BOARD_I2C_HZ     400000
 #define BOARD_LED_GPIO   4
-#define BOARD_SENSOR_I2C_ADDR 0x39   // TODO(team): from the sensor datasheet
+#define BOARD_SENSOR_I2C_ADDR 0x59   // TCS3448, fixed (datasheet table 8)

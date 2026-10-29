@@ -14,5 +14,8 @@ i2c_bus_handle_t *i2c_bus_init(int port, int sda, int scl, uint32_t hz);
 esp_err_t i2c_bus_add_device(i2c_bus_handle_t *bus, uint8_t addr, i2c_bus_dev_t **dev_out);
 esp_err_t i2c_bus_read_regs(i2c_bus_dev_t *dev, uint8_t reg, uint8_t *buf, size_t len);
 esp_err_t i2c_bus_write_reg(i2c_bus_dev_t *dev, uint8_t reg, uint8_t value);
+// Burst write of `len` bytes starting at `reg` (len <= I2C_BUS_MAX_WRITE).
+esp_err_t i2c_bus_write_regs(i2c_bus_dev_t *dev, uint8_t reg, const uint8_t *buf, size_t len);
+#define I2C_BUS_MAX_WRITE 8
 // Bring-up helper: logs every 7-bit address that ACKs.
 esp_err_t i2c_bus_scan(i2c_bus_handle_t *bus);

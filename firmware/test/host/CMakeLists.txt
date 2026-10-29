@@ -20,6 +20,8 @@ add_library(core_host STATIC
     ${FW}/adapters/mock_sensor/mock_sensor.c
     ${FW}/adapters/mock_sensor/mock_data.c
     ${FW}/adapters/mobiledetect_protocol/mobiledetect_protocol.c
+    ${FW}/adapters/tcs3448/tcs3448.c
+    fakes/fake_i2c_bus.c
     fakes/fake_illuminator.c
     fakes/fake_timebase.c
     fakes/fake_sink.c)
@@ -30,6 +32,8 @@ target_include_directories(core_host PUBLIC
     ${FW}/core/usecase/include
     ${FW}/adapters/mock_sensor/include
     ${FW}/adapters/mobiledetect_protocol/include
+    ${FW}/adapters/tcs3448/include
+    ${FW}/platform/i2c_bus/include
     fakes)
 target_compile_options(core_host PRIVATE -Wall -Wextra -Werror)
 
@@ -39,7 +43,8 @@ foreach(src
         domain/test_strip_analysis.c
         usecase/test_measurement.c
         adapters/test_mock_sensor.c
-        adapters/test_mobiledetect_protocol.c)
+        adapters/test_mobiledetect_protocol.c
+        adapters/test_tcs3448.c)
     get_filename_component(t ${src} NAME_WE)
     add_executable(${t} ${src})
     target_link_libraries(${t} PRIVATE core_host unity)

@@ -70,7 +70,7 @@ not emulate Bluetooth, so use a devkit for the BLE build.
 
 `idf.py menuconfig` → **DetectaChem firmware**:
 
-- *Optical sensor*: Mock (default) or AS7341 (placeholder skeleton)
+- *Optical sensor*: Mock (default) or TCS3448
 - *Result output*: Serial log (default) or BLE
 - BLE device name
 
@@ -103,8 +103,7 @@ Everything marked `TODO(team)` in the repo (`grep -rn "TODO(team)"`):
 
 | Placeholder | Where |
 |---|---|
-| Sensor part (AS7341 is a stand-in): rename/replace driver, fill registers, ID, gain/integration encodings, channel count from datasheet | `firmware/adapters/as7341/` |
-| Sensor I2C address | `firmware/main/board.h` (`BOARD_SENSOR_I2C_ADDR`) |
+| Sensor gain (`DEFAULT_AGAIN`, 256x) | `firmware/adapters/tcs3448/tcs3448.c` |
 | Pin and bus assignments (I2C port/SDA/SCL/speed, LED GPIO) | `firmware/main/board.h` |
 | I2C pull-ups: internal pull-ups enabled until the PCB has its own | `firmware/platform/i2c_bus/i2c_bus.c` |
 | Strip analysis algorithm | `firmware/core/domain/strip_analysis.c` |
