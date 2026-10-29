@@ -3,7 +3,7 @@
 | Question | Owner | Asked on | Status | Default assumption |
 |---|---|---|---|---|
 | Which optical sensor part ships? | | | Tentative: TCS3448 | `adapters/tcs3448` driver; mock sensor stays the default build. Needs 1.8 V supply and a level shifter (see `docs/sensor-notes.md`) |
-| What channel data does the analysis need? | | | | Up to 16 float channels per reading (`DC_MAX_CHANNELS`); TCS3448 gives 14, mock uses 8 |
+| What channel data does the analysis need? | | | | Up to 16 float channels per reading (`DC_MAX_CHANNELS`); TCS3448 gives 14; the mock uses the same layout |
 | Strip types: lateral flow, colorimetric, or both? | | | Answered: both, as separate tests | Two analysis paths in the domain; mode chosen per test at runtime |
 | How is the test mode chosen? | | | Tentative: keypad button on the device | Keypad press sets the mode before each test |
 | Keypad: which part, how many keys, matrix or individual GPIOs? Is there a display or other feedback for the selected mode? | | | | None; no keypad adapter yet |
