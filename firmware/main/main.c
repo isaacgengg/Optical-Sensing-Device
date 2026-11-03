@@ -42,7 +42,7 @@ static const measurement_config_t s_cfg[] = {
             .mode = STRIP_MODE_LATERAL_FLOW,
             .t_threshold = 1200.0f,         // TODO(team): placeholder
             .c_threshold = 100.0f,          // TODO(team): placeholder
-            .lfa_format = LFA_STANDARD,     // TODO(team): confirm with DetectaChem
+            .lfa_format = LFA_COMPETITIVE,  // confirmed: C+T = negative, C only = positive
         },
     },
     [STRIP_MODE_COLORIMETRIC] = {
