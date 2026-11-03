@@ -21,10 +21,10 @@ History stays in memory and clears when the page reloads.
 
 ## Live results over Bluetooth
 
-1. Flash the BLE build (from `firmware/`, delete `sdkconfig` first if present):
-   `idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.ble" build flash`
+1. Build and flash the **ble** build (or **tcs3448 + BLE** for real readings),
+   following [docs/setup.md](../docs/setup.md) steps 3 and 4.
 2. Click **Connect device**, pick **DetectaChem-T2**, and pair.
-3. Trigger measurements with `l` or `c` in `idf.py monitor`. Each result is
+3. Trigger measurements with `l` or `c` in the serial monitor. Each result is
    added to the history marked **Device**.
 
 Opening the serial monitor resets the board and drops the connection; click

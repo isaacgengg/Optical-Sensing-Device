@@ -11,74 +11,37 @@ with a mock sensor before the real sensor and PCB exist.
 
 ```
 firmware/   ESP-IDF project: core (domain, ports, use case), adapters, platform, host tests
-docs/       architecture, open questions, sensor notes
+docs/       setup guide, architecture, open questions, sensor notes
 hardware/   PCB design files, BOM, fab outputs, datasheets
 tools/      check_layers.sh (architecture check)
 .github/    CI
 ```
 
-## Prerequisites
+## Getting started
 
-- **ESP-IDF v5.5.5** (not installed on the machine that created this repo;
-  pinned to the latest stable v5.x at the time, same as CI). v5.3+ is
-  required for the `i2c_master` / `esp_driver_*` APIs.
-- **Target chip:** `esp32`. TODO(team): confirm the exact ESP32 variant on the PCB.
-- **CMake** 3.16+ and gcc or clang for host tests.
+**[docs/setup.md](docs/setup.md)**: install, build, flash and monitor on Linux, macOS or Windows (Docker plus `esptool`, no ESP-IDF install needed). It also covers running without a board (QEMU) and the host tests.
 
-## Build and flash
+Quick reference, once set up:
 
-```
-cd firmware && idf.py set-target esp32 && idf.py build flash monitor
-```
-
-Or without a local ESP-IDF install:
-
-```
-docker run --rm -v $PWD/firmware:/project -w /project espressif/idf:v5.5.5 idf.py set-target esp32 build
-```
-
-## Take a measurement
-
-In `idf.py monitor`, press `l` (lateral flow) or `c` (colorimetric). Each press
-takes one measurement and prints the result (`log_sink: mode=... verdict=...`).
-The serial console stands in for the device keypad.
-
-Quit the monitor with **Ctrl+]**, or **Ctrl+T then Ctrl+X** if your terminal
-doesn't send Ctrl+] (VS Code's often doesn't). Ctrl+C does not quit: it is
-sent to the device as a keypress. If it is stuck, `docker ps` and
-`docker stop <id>` from another terminal.
-
-## Run without hardware (QEMU)
-
-QEMU emulates an ESP32, so the firmware runs on a laptop with no board. From
-the repo root:
-
-```
-docker run --rm -it -u $(id -u):$(id -g) -e HOME=/tmp \
-  -v $PWD/firmware:/project -w /project espressif/idf:v5.5.5 \
-  bash -c "idf.py set-target esp32 && idf.py build && idf.py qemu monitor"
-```
-
-Boot takes a few seconds, then press `l` or `c` as above. `-u` keeps the build
-files owned by you instead of root. With a local ESP-IDF install, run
-`idf.py qemu monitor` inside `firmware/`.
-
-QEMU covers the mock sensor, keyboard input, and serial-log output. It does
-not emulate Bluetooth, so use a devkit for the BLE build.
+- **Builds:** `tcs3448` (real sensor), `mock` (no sensor, or QEMU), `ble` (results over Bluetooth). Each builds into its own `firmware/build-<name>/` folder.
+- **Measure:** in the serial monitor, press `l` (lateral flow) or `c` (colorimetric). Quit with Ctrl+].
+- **Target:** ESP-IDF v5.5.5 (v5.3+ needed for the `i2c_master` API), chip `esp32`. TODO(team): confirm the exact ESP32 variant on the PCB.
 
 ## Switch sensor and output
 
-`idf.py menuconfig` → **DetectaChem firmware**:
+The build picks these up from the `sdkconfig.*` files in `firmware/`:
 
-- *Optical sensor*: Mock (default) or TCS3448
-- *Result output*: Serial log (default) or BLE
-- BLE device name
+| File | Sets |
+|---|---|
+| `sdkconfig.defaults` | Always applied: mock sensor, serial-log output |
+| `sdkconfig.tcs3448` | Real TCS3448 sensor |
+| `sdkconfig.ble` | Results over BLE instead of the log |
 
-To build with BLE without menuconfig:
-`idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.ble" build`
-(delete `firmware/sdkconfig` first if one exists).
+To change other options (BLE device name, etc.), run `idf.py -B build-<name> -D SDKCONFIG=build-<name>/sdkconfig menuconfig` (add `-it` to the `docker run`) → **DetectaChem firmware**.
 
 ## Host tests and layer check
+
+To run them in Docker on any OS, see [docs/setup.md](docs/setup.md#6-host-tests-no-board-no-esp32). With cmake and gcc/clang installed natively:
 
 ```
 cmake -S firmware/test/host -B build/host

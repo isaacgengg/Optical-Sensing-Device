@@ -1,0 +1,2 @@
+# Layered on top of sdkconfig.defaults: use the real TCS3448 sensor instead of the mock.
+CONFIG_DC_SENSOR_TCS3448=y

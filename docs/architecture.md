@@ -112,7 +112,7 @@ unaffected.
 `command_source` is the one **driving port**: it tells the device when to
 measure and in which mode (lateral flow or colorimetric). `main.c` waits on
 it, then calls `measurement_run` with that mode's config. For now
-`console_input` implements it with keys typed into `idf.py monitor`
+`console_input` implements it with keys typed into the serial monitor
 (`l` = lateral flow, `c` = colorimetric).
 
 To use the real keypad or GPIO buttons: write an adapter that implements
