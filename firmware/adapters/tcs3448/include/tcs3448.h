@@ -21,7 +21,8 @@
 #include "timebase.h"
 #include "i2c_bus.h"
 
-#define TCS3448_CHANNEL_COUNT 14  // I2C address is fixed at 0x59 (BOARD_SENSOR_I2C_ADDR)
+#define TCS3448_CHANNEL_COUNT 14
+#define TCS3448_I2C_ADDR 0x59  // fixed (datasheet table 8)
 
 // `time` is used to poll for data ready without busy-waiting.
 optical_sensor_t *tcs3448_create(i2c_bus_handle_t *bus, uint8_t address, timebase_t *time);

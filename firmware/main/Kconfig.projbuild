@@ -9,6 +9,9 @@ menu "DetectaChem firmware"
 
         config DC_SENSOR_TCS3448
             bool "TCS3448 (ams OSRAM, I2C)"
+
+        config DC_SENSOR_S13683
+            bool "S13683-02WT (Hamamatsu, I2C)"
     endchoice
 
     choice DC_SINK

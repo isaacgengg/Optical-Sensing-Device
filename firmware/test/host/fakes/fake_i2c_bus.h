@@ -1,6 +1,7 @@
 // Host fake of i2c_bus.h: one device backed by a 256-byte register file.
 // Models the TCS3448 register bank: 0x20-0x7F read as 0xEE unless
-// CFG0 (0xBF) bit 4 is set.
+// CFG0 (0xBF) bit 4 is set. read_or[] forces bits on in reads, for read-only
+// status bits the device sets itself (e.g. S13683 standby).
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
@@ -10,6 +11,7 @@
 
 typedef struct {
     uint8_t regs[256];
+    uint8_t read_or[256];
     struct { uint8_t reg, value; } writes[FAKE_I2C_MAX_WRITES];
     size_t write_count;
     size_t burst_count;  // write_regs calls with len > 1

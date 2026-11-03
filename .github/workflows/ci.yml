@@ -41,6 +41,13 @@ jobs:
           echo CONFIG_DC_SENSOR_TCS3448=y > /tmp/tcs3448.defaults
           idf.py -B build-tcs3448 -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;/tmp/tcs3448.defaults" set-target esp32
           idf.py -B build-tcs3448 -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;/tmp/tcs3448.defaults" build
+      - name: Build (S13683, log sink)
+        run: |
+          . $IDF_PATH/export.sh
+          rm -f sdkconfig
+          echo CONFIG_DC_SENSOR_S13683=y > /tmp/s13683.defaults
+          idf.py -B build-s13683 -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;/tmp/s13683.defaults" set-target esp32
+          idf.py -B build-s13683 -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;/tmp/s13683.defaults" build
       - name: Build (mock sensor, BLE sink)
         run: |
           . $IDF_PATH/export.sh

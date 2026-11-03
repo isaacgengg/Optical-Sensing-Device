@@ -42,7 +42,7 @@ esp_err_t i2c_bus_read_regs(i2c_bus_dev_t *dev, uint8_t reg, uint8_t *buf, size_
     for (size_t i = 0; i < len; i++) {
         uint8_t r = (uint8_t)(reg + i);
         bool banked = r >= 0x20 && r <= 0x7F;
-        buf[i] = banked && !bank1 ? 0xEE : s_state.regs[r];
+        buf[i] = banked && !bank1 ? 0xEE : (uint8_t)(s_state.regs[r] | s_state.read_or[r]);
     }
     return ESP_OK;
 }

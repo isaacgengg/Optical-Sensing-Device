@@ -15,6 +15,9 @@
 #if CONFIG_DC_SENSOR_TCS3448
 #include "i2c_bus.h"
 #include "tcs3448.h"
+#elif CONFIG_DC_SENSOR_S13683
+#include "i2c_bus.h"
+#include "s13683.h"
 #else
 #include "mock_sensor.h"
 #endif
@@ -79,14 +82,18 @@ void app_main(void)
     s_deps.time = freertos_timebase_create();
     s_deps.light = led_gpio_create(BOARD_LED_GPIO);
 
-#if CONFIG_DC_SENSOR_TCS3448
+#if CONFIG_DC_SENSOR_TCS3448 || CONFIG_DC_SENSOR_S13683
     i2c_bus_handle_t *bus = i2c_bus_init(BOARD_I2C_PORT, BOARD_I2C_SDA, BOARD_I2C_SCL, BOARD_I2C_HZ);
     if (bus == NULL) {
         ESP_LOGE(TAG, "I2C bus init failed");
         return;
     }
     i2c_bus_scan(bus);
-    s_deps.sensor = tcs3448_create(bus, BOARD_SENSOR_I2C_ADDR, s_deps.time);
+#if CONFIG_DC_SENSOR_TCS3448
+    s_deps.sensor = tcs3448_create(bus, TCS3448_I2C_ADDR, s_deps.time);
+#else
+    s_deps.sensor = s13683_create(bus, S13683_I2C_ADDR, s_deps.time);
+#endif
 #else
     s_deps.sensor = mock_sensor_create(mock_default_table, mock_default_table_len);
 #endif
