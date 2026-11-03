@@ -7,6 +7,7 @@
 #include "esp_log.h"
 
 #include "board.h"
+#include "color_refs.h"
 #include "measurement.h"
 #include "freertos_timebase.h"
 #include "led_gpio.h"
@@ -52,8 +53,10 @@ static const measurement_config_t s_cfg[] = {
         .sample_count = 5,
         .analysis = {
             .mode = STRIP_MODE_COLORIMETRIC,
-            .positive_threshold = 1200.0f,  // TODO(team): placeholder
-            .min_signal = 100.0f,           // TODO(team): placeholder
+            .white = &COLOR_WHITE,          // see color_refs.h
+            .refs = COLOR_REFS,
+            .ref_count = sizeof(COLOR_REFS) / sizeof(COLOR_REFS[0]),
+            .max_distance = COLOR_MAX_DISTANCE,
         },
     },
 };

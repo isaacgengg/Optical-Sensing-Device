@@ -107,7 +107,8 @@ Everything marked `TODO(team)` in the repo (`grep -rn "TODO(team)"`):
 | Pin and bus assignments (I2C port/SDA/SCL/speed, LED GPIO) | `firmware/main/board.h` |
 | I2C pull-ups: internal pull-ups enabled until the PCB has its own | `firmware/platform/i2c_bus/i2c_bus.c` |
 | Strip analysis algorithm | `firmware/core/domain/strip_analysis.c` |
-| Analysis thresholds (`positive_threshold`, `min_signal`) | `firmware/core/domain/include/strip_types.h`, `firmware/main/main.c` |
+| Lateral flow thresholds (`t_threshold`, `c_threshold`) | `firmware/main/main.c` |
+| Colorimetric white reference, pad colors, match distance (made-up values) | `firmware/main/color_refs.h` |
 | Measurement parameters (integration time, LED settle, sample count) | `firmware/main/main.c` |
 | Mock sensor data (made-up values) | `firmware/adapters/mock_sensor/mock_data.c` |
 | LED intensity control (PWM via LEDC) | `firmware/adapters/led_gpio/led_gpio.c` |

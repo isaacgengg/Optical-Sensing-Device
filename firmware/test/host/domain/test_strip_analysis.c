@@ -1,8 +1,6 @@
 #include "unity.h"
 #include "strip_analysis.h"
 
-static const strip_config_t CFG = {.positive_threshold = 100.0f, .min_signal = 10.0f};
-
 static channel_reading_t uniform(float v, size_t count)
 {
     channel_reading_t r = {.count = count};
@@ -34,48 +32,92 @@ static void test_average_zero_samples(void)
     TEST_ASSERT_EQUAL_size_t(0, strip_average(s, 0).count);
 }
 
-static void test_zero_samples_invalid(void)
+// --- colorimetric ---
+
+static const channel_reading_t WHITE = {.values = {1000, 2000}, .count = 2};
+static const color_ref_t REFS[] = {
+    {.name = "clear", .verdict = STRIP_NEGATIVE, .reflectance = {0.9f, 0.9f}},
+    {.name = "blue", .verdict = STRIP_POSITIVE, .reflectance = {0.8f, 0.2f}},
+};
+static const strip_config_t CFG = {
+    .mode = STRIP_MODE_COLORIMETRIC, .white = &WHITE, .refs = REFS, .ref_count = 2,
+    .max_distance = 0.1f};
+
+static strip_result_t color(float ch0, float ch1, const strip_config_t *cfg)
 {
-    channel_reading_t s[1] = {uniform(500, 4)};
-    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze(s, 0, &CFG).verdict);
+    channel_reading_t s[1] = {{.values = {ch0, ch1}, .count = 2}};
+    return strip_analyze(s, 1, cfg);
 }
 
-static void test_low_signal_invalid(void)
+static void test_color_reflectance_is_raw_over_white(void)
 {
-    channel_reading_t s[1] = {uniform(9.9f, 4)};
-    strip_result_t r = strip_analyze(s, 1, &CFG);
+    strip_result_t r = color(500, 500, &CFG);
+    TEST_ASSERT_EQUAL_size_t(2, r.reflectance.count);
+    TEST_ASSERT_EQUAL_FLOAT(0.5f, r.reflectance.values[0]);
+    TEST_ASSERT_EQUAL_FLOAT(0.25f, r.reflectance.values[1]);
+    TEST_ASSERT_EQUAL_FLOAT(500.0f, r.raw.values[1]);
+}
+
+static void test_color_matches_nearest_reference(void)
+{
+    strip_result_t r = color(800, 400, &CFG);  // refl 0.8, 0.2: exactly "blue"
+    TEST_ASSERT_EQUAL(STRIP_POSITIVE, r.verdict);
+    TEST_ASSERT_EQUAL_STRING("blue", r.match);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.0f, r.score);
+    TEST_ASSERT_EQUAL(STRIP_MODE_COLORIMETRIC, r.mode);
+
+    r = color(880, 1840, &CFG);  // refl 0.88, 0.92: near "clear"
+    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, r.verdict);
+    TEST_ASSERT_EQUAL_STRING("clear", r.match);
+    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.02f, r.score);  // RMS of (0.02, 0.02)
+}
+
+static void test_color_too_far_from_every_reference_is_invalid(void)
+{
+    strip_result_t r = color(100, 1800, &CFG);  // refl 0.1, 0.9: no such pad
     TEST_ASSERT_EQUAL(STRIP_INVALID, r.verdict);
-    TEST_ASSERT_EQUAL_FLOAT(9.9f, r.score);
+    TEST_ASSERT_NULL(r.match);
+    TEST_ASSERT_TRUE(r.score > CFG.max_distance);
 }
 
-static void test_threshold_boundaries(void)
+static void test_color_distance_boundary(void)
 {
-    channel_reading_t s[1];
-
-    s[0] = uniform(10.0f, 4);  // exactly min_signal
-    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, strip_analyze(s, 1, &CFG).verdict);
-
-    s[0] = uniform(99.9f, 4);
-    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, strip_analyze(s, 1, &CFG).verdict);
-
-    s[0] = uniform(100.0f, 4);  // exactly positive_threshold
-    TEST_ASSERT_EQUAL(STRIP_POSITIVE, strip_analyze(s, 1, &CFG).verdict);
-}
-
-static void test_score_is_mean_across_channels(void)
-{
-    channel_reading_t s[1] = {{.values = {50, 150}, .count = 2}};
-    strip_result_t r = strip_analyze(s, 1, &CFG);
-    TEST_ASSERT_EQUAL_FLOAT(100.0f, r.score);
-    TEST_ASSERT_EQUAL_size_t(1, r.sample_count);
-}
-
-static void test_result_carries_mode(void)
-{
-    channel_reading_t s[1] = {uniform(50, 4)};
+    // Values exact in binary: refl 0.25 vs ref 0.75 gives RMS exactly 0.5.
+    static const color_ref_t one[] = {{.name = "grey", .verdict = STRIP_NEGATIVE, .reflectance = {0.75f, 0.75f}}};
     strip_config_t cfg = CFG;
-    cfg.mode = STRIP_MODE_COLORIMETRIC;
-    TEST_ASSERT_EQUAL(STRIP_MODE_COLORIMETRIC, strip_analyze(s, 1, &cfg).mode);
+    cfg.refs = one;
+    cfg.ref_count = 1;
+    cfg.max_distance = 0.5f;
+    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, color(250, 500, &cfg).verdict);
+    cfg.max_distance = 0.49f;
+    TEST_ASSERT_EQUAL(STRIP_INVALID, color(250, 500, &cfg).verdict);
+}
+
+static void test_color_bad_config_is_invalid(void)
+{
+    channel_reading_t s[1] = {{.values = {800, 400}, .count = 2}};
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze(s, 0, &CFG).verdict);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze(NULL, 1, &CFG).verdict);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze(s, 1, NULL).verdict);
+
+    strip_config_t cfg = CFG;
+    cfg.white = NULL;
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze(s, 1, &cfg).verdict);
+
+    cfg = CFG;
+    cfg.ref_count = 0;
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze(s, 1, &cfg).verdict);
+
+    channel_reading_t white3 = {.values = {1, 1, 1}, .count = 3};  // channel count mismatch
+    cfg = CFG;
+    cfg.white = &white3;
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze(s, 1, &cfg).verdict);
+
+    channel_reading_t dead = {.values = {1000, 0}, .count = 2};  // can't divide by 0
+    cfg.white = &dead;
+    strip_result_t r = strip_analyze(s, 1, &cfg);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, r.verdict);
+    TEST_ASSERT_NULL(r.match);
 }
 
 // --- lateral flow ---
@@ -136,11 +178,11 @@ int main(void)
     UNITY_BEGIN();
     RUN_TEST(test_average_per_channel);
     RUN_TEST(test_average_zero_samples);
-    RUN_TEST(test_zero_samples_invalid);
-    RUN_TEST(test_low_signal_invalid);
-    RUN_TEST(test_threshold_boundaries);
-    RUN_TEST(test_score_is_mean_across_channels);
-    RUN_TEST(test_result_carries_mode);
+    RUN_TEST(test_color_reflectance_is_raw_over_white);
+    RUN_TEST(test_color_matches_nearest_reference);
+    RUN_TEST(test_color_too_far_from_every_reference_is_invalid);
+    RUN_TEST(test_color_distance_boundary);
+    RUN_TEST(test_color_bad_config_is_invalid);
     RUN_TEST(test_lfa_no_control_line_is_invalid);
     RUN_TEST(test_lfa_standard_t_line_means_positive);
     RUN_TEST(test_lfa_competitive_t_line_means_negative);

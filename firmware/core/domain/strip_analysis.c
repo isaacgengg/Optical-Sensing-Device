@@ -1,11 +1,12 @@
-// TODO(team): PLACEHOLDER SIGNAL METRIC.
-// A line's "signal" is the mean across channels (mean_signal below). A real
-// line darkens the strip, so the real metric is likely absorbance against
-// blank membrane in the bands the line absorbs (gold: ~520-540 nm), plus
-// dark/white calibration. The lateral flow C-then-T rules are real; the
-// colorimetric path (strip_analyze) is a placeholder until DetectaChem's
-// color chart exists. Keep it pure.
+// Colorimetric: reflectance against a white reference, matched to the nearest
+// known pad color. The reference curves are placeholders until measured
+// (firmware/main/color_refs.h).
+// TODO(team): PLACEHOLDER LATERAL FLOW METRIC. A line's "signal" is the mean
+// across channels (mean_signal below). A real line darkens the strip, so the
+// real metric is likely absorbance against blank membrane in the bands the line
+// absorbs (gold: ~520-540 nm). The C-then-T rules are real. Keep it pure.
 
+#include <math.h>
 #include <stdbool.h>
 #include "strip_analysis.h"
 
@@ -46,22 +47,47 @@ static bool mean_signal(const channel_reading_t *samples, size_t n, float *out)
 strip_result_t strip_analyze(const channel_reading_t *samples, size_t n,
                              const strip_config_t *cfg)
 {
-    strip_result_t result = {.verdict = STRIP_INVALID, .score = 0.0f, .sample_count = n};
+    strip_result_t result = {.verdict = STRIP_INVALID, .sample_count = n};
     if (samples == NULL || cfg == NULL || n == 0) {
         return result;
     }
     result.mode = cfg->mode;
+    result.raw = strip_average(samples, n);
 
-    if (!mean_signal(samples, n, &result.score)) {
+    const channel_reading_t *white = cfg->white;
+    if (white == NULL || cfg->refs == NULL || cfg->ref_count == 0 ||
+        result.raw.count == 0 || white->count != result.raw.count) {
         return result;
     }
+    size_t count = result.raw.count;
+    for (size_t c = 0; c < count; c++) {
+        if (white->values[c] <= 0.0f) {
+            return result;  // dead or uncalibrated channel: can't divide by it
+        }
+        result.reflectance.values[c] = result.raw.values[c] / white->values[c];
+    }
+    result.reflectance.count = count;
 
-    if (result.score < cfg->min_signal) {
-        result.verdict = STRIP_INVALID;
-    } else if (result.score >= cfg->positive_threshold) {
-        result.verdict = STRIP_POSITIVE;
-    } else {
-        result.verdict = STRIP_NEGATIVE;
+    // ponytail: nearest neighbour on all channels, equally weighted. Weight or
+    // drop channels (FD is flicker, VIS is broadband) if real data says so.
+    float best = INFINITY;
+    const color_ref_t *best_ref = NULL;
+    for (size_t r = 0; r < cfg->ref_count; r++) {
+        float sum = 0.0f;
+        for (size_t c = 0; c < count; c++) {
+            float d = result.reflectance.values[c] - cfg->refs[r].reflectance[c];
+            sum += d * d;
+        }
+        float rms = sqrtf(sum / (float)count);
+        if (rms < best) {
+            best = rms;
+            best_ref = &cfg->refs[r];
+        }
+    }
+    result.score = best;
+    if (best <= cfg->max_distance) {
+        result.match = best_ref->name;
+        result.verdict = best_ref->verdict;
     }
     return result;
 }
@@ -75,6 +101,7 @@ strip_result_t strip_analyze_lateral_flow(const channel_reading_t *t_samples,
     if (t_samples == NULL || c_samples == NULL || cfg == NULL || n == 0) {
         return result;
     }
+    result.raw = strip_average(t_samples, n);
     if (!mean_signal(t_samples, n, &result.score) ||
         !mean_signal(c_samples, n, &result.control_score)) {
         return result;
