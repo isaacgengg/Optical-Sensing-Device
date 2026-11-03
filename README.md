@@ -13,17 +13,18 @@ with a mock sensor before the real sensor and PCB exist.
 firmware/   ESP-IDF project: core (domain, ports, use case), adapters, platform, host tests
 docs/       setup guide, architecture, open questions, sensor notes
 hardware/   PCB design files, BOM, fab outputs, datasheets
-tools/      check_layers.sh (architecture check)
+tools/      run.py (build/flash/monitor), check_layers.sh (architecture check)
 .github/    CI
 ```
 
 ## Getting started
 
-**[docs/setup.md](docs/setup.md)**: install, build, flash and monitor on Linux, macOS or Windows (Docker plus `esptool`, no ESP-IDF install needed). It also covers running without a board (QEMU) and the host tests.
+```
+python3 tools/run.py tcs3448 PORT
+```
 
-Quick reference, once set up:
+That builds, flashes and opens the serial monitor on Linux, macOS or Windows (`py` instead of `python3` on Windows). It needs Docker and Python; no ESP-IDF install. **[docs/setup.md](docs/setup.md)** covers the one-time install, finding `PORT`, the other builds (`mock`, `ble`, `tcs3448-ble`), QEMU and host tests.
 
-- **Builds:** `tcs3448` (real sensor), `mock` (no sensor, or QEMU), `ble` (results over Bluetooth). Each builds into its own `firmware/build-<name>/` folder.
 - **Measure:** in the serial monitor, press `l` (lateral flow) or `c` (colorimetric). Quit with Ctrl+].
 - **Target:** ESP-IDF v5.5.5 (v5.3+ needed for the `i2c_master` API), chip `esp32`. TODO(team): confirm the exact ESP32 variant on the PCB.
 
@@ -37,11 +38,11 @@ The build picks these up from the `sdkconfig.*` files in `firmware/`:
 | `sdkconfig.tcs3448` | Real TCS3448 sensor |
 | `sdkconfig.ble` | Results over BLE instead of the log |
 
-To change other options (BLE device name, etc.), run `idf.py -B build-<name> -D SDKCONFIG=build-<name>/sdkconfig menuconfig` (add `-it` to the `docker run`) → **DetectaChem firmware**.
+To add a build, add an entry to `BUILDS` in `tools/run.py`. Other options (BLE device name, etc.) are under **DetectaChem firmware** in `idf.py menuconfig`.
 
 ## Host tests and layer check
 
-To run them in Docker on any OS, see [docs/setup.md](docs/setup.md#6-host-tests-no-board-no-esp32). With cmake and gcc/clang installed natively:
+On any OS, in Docker: `python3 tools/run.py test`. With cmake and gcc/clang installed natively:
 
 ```
 cmake -S firmware/test/host -B build/host
