@@ -21,8 +21,8 @@ History stays in memory and clears when the page reloads.
 
 ## Live results over Bluetooth
 
-1. Build and flash the **ble** build (or **tcs3448 + BLE** for real readings),
-   following [docs/setup.md](../docs/setup.md) steps 3 and 4.
+1. Build and flash the BLE build: `python3 tools/run.py ble PORT`, or
+   `tcs3448-ble` for real sensor readings (see [docs/setup.md](../docs/setup.md)).
 2. Click **Connect device**, pick **DetectaChem-T2**, and pair.
 3. Trigger measurements with `l` or `c` in the serial monitor. Each result is
    added to the history marked **Device**.
