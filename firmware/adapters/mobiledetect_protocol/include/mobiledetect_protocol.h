@@ -12,7 +12,7 @@
 //   [0]     version        u8   MDP_VERSION
 //   [1]     mode           u8   strip_mode_t (0 = lateral flow, 1 = colorimetric)
 //   [2]     verdict        u8   strip_verdict_t (0 = negative, 1 = positive, 2 = invalid)
-//   [3..6]  score          f32  lateral flow: T line signal
+//   [3..6]  score          f32  lateral flow: T line signal; colorimetric: distance to closest color
 //   [7..10] control_score  f32  lateral flow: C line signal; 0 for colorimetric
 //   [11..12] sample_count  u16
 // v0 (8 bytes) had no mode or control_score.

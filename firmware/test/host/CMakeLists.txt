@@ -35,6 +35,7 @@ target_include_directories(core_host PUBLIC
     ${FW}/adapters/tcs3448/include
     ${FW}/platform/i2c_bus/include
     fakes)
+target_link_libraries(core_host PUBLIC m)  # sqrtf
 target_compile_options(core_host PRIVATE -Wall -Wextra -Werror)
 
 enable_testing()

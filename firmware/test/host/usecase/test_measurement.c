@@ -21,7 +21,6 @@ void setUp(void)
         .led_intensity_pct = 80,
         .led_settle_ms = 50,
         .sample_count = 3,
-        .analysis = {.positive_threshold = 1000.0f, .min_signal = 10.0f},
     };
     TEST_ASSERT_EQUAL(ESP_OK, measurement_init(&deps));
 }
@@ -126,13 +125,17 @@ static void test_colorimetric_reads_one_set(void)
 {
     deps.sensor = mock_sensor_create(T_THEN_C, 4);
     cfg.sample_count = 2;
+    static const channel_reading_t white = {.values = {400}, .count = 1};
+    static const color_ref_t refs[] = {{.name = "half", .verdict = STRIP_POSITIVE, .reflectance = {0.5f}}};
     cfg.analysis = (strip_config_t){
-        .mode = STRIP_MODE_COLORIMETRIC, .positive_threshold = 1000.0f, .min_signal = 10.0f};
+        .mode = STRIP_MODE_COLORIMETRIC, .white = &white, .refs = refs, .ref_count = 1,
+        .max_distance = 0.01f};
 
     strip_result_t r;
     TEST_ASSERT_EQUAL(ESP_OK, measurement_run(&deps, &cfg, &r));
     TEST_ASSERT_EQUAL(STRIP_MODE_COLORIMETRIC, r.mode);
-    TEST_ASSERT_EQUAL_FLOAT(200.0f, r.score);  // rows 0-1 only
+    TEST_ASSERT_EQUAL_FLOAT(200.0f, r.raw.values[0]);  // rows 0-1 only
+    TEST_ASSERT_EQUAL(STRIP_POSITIVE, r.verdict);
     TEST_ASSERT_EQUAL_FLOAT(0.0f, r.control_score);
 }
 

@@ -8,8 +8,8 @@
 | How is the test mode chosen? | | | Tentative: keypad button on the device | Keypad press sets the mode before each test |
 | Keypad: which part, how many keys, matrix or individual GPIOs? Is there a display or other feedback for the selected mode? | | | | None; no keypad adapter yet |
 | Measurement method: are test and control lines measured separately? | | | | Yes, the optics must separate them. Until decided, the use case reads a T sample set then a C sample set from the one sensor (`measurement.c` step 5); `strip_analyze_lateral_flow` takes them separately |
-| Lateral flow format: standard (T line = positive) or competitive (T line = negative)? | | 2026-11-03 | Answered: competitive (C+T = negative, C only = positive) | `lfa_format = LFA_COMPETITIVE` in `main.c`; standard still supported |
-| Colorimetric: which pad colors map to which results (reference chart or calibration curve)? | | | | None; needs data from DetectaChem |
+| Lateral flow format: standard (T line = positive) or competitive (T line = negative)? | | | | Standard (`lfa_format` in `main.c`; both are supported) |
+| Colorimetric: which pad colors map to which results (reference chart or calibration curve)? | | | | Nearest-match against reference reflectance curves in `firmware/main/color_refs.h` (made-up white, clear, purple, orange); replace with measured pads |
 | MobileDetect BLE message format, service and characteristic UUIDs? | | | | Placeholder v1 format (`mobiledetect_protocol`: mode, verdict, T and C scores, sample count), random 128-bit UUIDs |
 | Does MobileDetect need to trigger measurements from the phone? | | | | No; measurements start from device input (`command_source`, keyboard stand-in for now) |
 | Exact ESP32 variant and final pin assignments? | | | | Plain `esp32` target; placeholder pins in `firmware/main/board.h` |
