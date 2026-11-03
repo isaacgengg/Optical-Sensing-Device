@@ -7,6 +7,7 @@ firmware/sdkconfig.old
 firmware/managed_components/
 firmware/dependencies.lock
 *.o
+.venv/
 
 # Editors
 .vscode/*
