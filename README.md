@@ -1,4 +1,4 @@
-# DetectaChem Team 2: optical sensing device
+# DetectaChem: Narcotic and Explosive Spectral Detection Device
 
 An ESP32-based reader for lateral flow and colorimetric test strips. It
 illuminates the strip with an LED, measures it with an I2C spectral sensor,
