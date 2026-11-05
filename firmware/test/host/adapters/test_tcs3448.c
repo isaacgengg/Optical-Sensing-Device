@@ -90,6 +90,17 @@ static void test_read_starts_a_fresh_measurement(void)
     TEST_ASSERT_EQUAL_HEX8(0x01, bus->writes[1].value);  // PON
 }
 
+static void test_read_restores_auto_smux_after_chip_reset(void)
+{
+    init_and_configure();
+    bus->regs[0x90] = 0x40;
+    bus->regs[0xD6] = 0x1F;  // chip reset: auto_smux back to 0, reserved bits kept
+
+    channel_reading_t r;
+    TEST_ASSERT_EQUAL(ESP_OK, sensor->read(sensor->ctx, &r));
+    TEST_ASSERT_EQUAL_HEX8(0x7F, bus->regs[0xD6]);
+}
+
 static void test_read_reports_saturation(void)
 {
     init_and_configure();
@@ -125,6 +136,7 @@ int main(void)
     RUN_TEST(test_integration_time_encoding);
     RUN_TEST(test_read_maps_channels_in_wavelength_order);
     RUN_TEST(test_read_starts_a_fresh_measurement);
+    RUN_TEST(test_read_restores_auto_smux_after_chip_reset);
     RUN_TEST(test_read_reports_saturation);
     RUN_TEST(test_read_times_out_without_data_ready);
     RUN_TEST(test_read_before_configure_is_rejected);
