@@ -22,6 +22,21 @@ static struct i2c_bus s_bus;
 static struct i2c_bus_dev s_devs[I2C_BUS_MAX_DEVICES];
 static size_t s_dev_count;
 
+// A failed transaction (timeout, NACK, SDA held low) leaves the driver in an
+// error state where every later call returns ESP_ERR_INVALID_STATE without
+// touching the wire. Reset the bus before retrying so one glitch isn't fatal.
+static void reset_before_retry(int attempt, uint8_t addr, esp_err_t err)
+{
+    if (attempt == 0) {
+        return;
+    }
+    ESP_LOGW(TAG, "addr=0x%02x: %s, resetting bus", addr, esp_err_to_name(err));
+    esp_err_t rst = i2c_master_bus_reset(s_bus.handle);
+    if (rst != ESP_OK) {
+        ESP_LOGW(TAG, "bus reset failed: %s", esp_err_to_name(rst));
+    }
+}
+
 i2c_bus_handle_t *i2c_bus_init(int port, int sda, int scl, uint32_t hz)
 {
     i2c_master_bus_config_t cfg = {
@@ -72,6 +87,7 @@ esp_err_t i2c_bus_read_regs(i2c_bus_dev_t *dev, uint8_t reg, uint8_t *buf, size_
     }
     esp_err_t err = ESP_FAIL;
     for (int attempt = 0; attempt < 2 && err != ESP_OK; attempt++) {
+        reset_before_retry(attempt, dev->addr, err);
         err = i2c_master_transmit_receive(dev->handle, &reg, 1, buf, len, I2C_BUS_TIMEOUT_MS);
     }
     if (err != ESP_OK) {
@@ -94,6 +110,7 @@ esp_err_t i2c_bus_write_regs(i2c_bus_dev_t *dev, uint8_t reg, const uint8_t *buf
     memcpy(&frame[1], buf, len);
     esp_err_t err = ESP_FAIL;
     for (int attempt = 0; attempt < 2 && err != ESP_OK; attempt++) {
+        reset_before_retry(attempt, dev->addr, err);
         err = i2c_master_transmit(dev->handle, frame, 1 + len, I2C_BUS_TIMEOUT_MS);
     }
     if (err != ESP_OK) {
