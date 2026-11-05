@@ -16,30 +16,34 @@
 #pragma once
 #include "strip_types.h"
 
-// TODO(team): MADE UP. Shaped like a white LED off a white card (blue LED peak
-// at FZ, broad yellow hump, little NIR). Replace with a measured white card.
+// Measured 2026-11-05, cardboard-box rig, 100 ms @ 256x:
+// mean of 2 white-card reads (a third, 22% dimmer, was dropped as misplaced).
 static const channel_reading_t COLOR_WHITE = {
-    .values = {179, 422, 1649, 1103, 763, 1046, 1380, 1416, 977, 517, 211, 90, 3113, 140},
+    .values = {14, 84.5, 394.5, 289, 455.5, 173.5, 543, 385.5, 242.5, 123, 17, 18, 556, 12031.5},
     .count = 14,
 };
 
-// TODO(team): MADE UP. Replace with measured pad colors (and real names) from
-// DetectaChem's color chart or known samples.
+// Measured 2026-11-05, same rig: mean reflectance of 4 red and 3 green test
+// strips. Low-count channels (F1, F8, NIR) are noisy until there's more light.
+// TODO(team): placeholder mapping (red = fentanyl, green = cocaine) for
+// test-paper colors, not real reagent reactions.
 static const color_ref_t COLOR_REFS[] = {
-    {   // unreacted pad: near-white, flat
-        .name = "clear", .verdict = STRIP_NEGATIVE,
-        .reflectance = {0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85},
+    {   // TODO(team): white card, all 1.0 by definition. Replace with the
+        // refl= line of a few real unused pads; they're rarely pure white.
+        .name = "control", .color = "white", .verdict = STRIP_NEGATIVE,
+        .reflectance = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
     },
-    {   // purple: absorbs green, reflects blue and red
-        .name = "purple", .verdict = STRIP_POSITIVE,
-        .reflectance = {0.55, 0.50, 0.45, 0.35, 0.20, 0.15, 0.18, 0.35, 0.60, 0.75, 0.80, 0.85, 0.40, 0.40},
+    {
+        .name = "fentanyl", .color = "red", .verdict = STRIP_POSITIVE,
+        .reflectance = {0.089, 0.050, 0.032, 0.046, 0.037, 0.035, 0.067, 0.140, 0.387, 0.457, 0.471, 0.389, 0.127, 0.160},
     },
-    {   // yellow-orange: absorbs blue, reflects green through red
-        .name = "orange", .verdict = STRIP_POSITIVE,
-        .reflectance = {0.10, 0.10, 0.12, 0.20, 0.45, 0.65, 0.65, 0.80, 0.85, 0.85, 0.85, 0.85, 0.60, 0.60},
+    {
+        .name = "cocaine", .color = "green", .verdict = STRIP_POSITIVE,
+        .reflectance = {0.310, 0.312, 0.349, 0.373, 0.528, 0.402, 0.366, 0.237, 0.139, 0.374, 0.843, 0.352, 0.344, 0.332},
     },
 };
 
-// TODO(team): placeholder. RMS reflectance difference allowed before the pad
-// counts as "no known color" (INVALID). 0.15 = off by ~15% per channel.
+// RMS reflectance difference allowed before the pad counts as "no known
+// color" (INVALID). Measured on the box rig: same color 0.01-0.09 apart,
+// red vs green >= 0.27, white vs either >= 0.42. TODO(team): re-check on the printed rig.
 #define COLOR_MAX_DISTANCE 0.15f

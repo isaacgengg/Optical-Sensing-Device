@@ -34,6 +34,7 @@ typedef enum {
 // 1 = reflects like the white reference) and the verdict it stands for.
 typedef struct {
     const char *name;
+    const char *color;  // what it looks like, e.g. "red". For the log
     strip_verdict_t verdict;
     float reflectance[DC_MAX_CHANNELS];
 } color_ref_t;
@@ -47,6 +48,7 @@ typedef struct {
     float control_score;  // lateral flow: C line signal. 0 otherwise
     size_t sample_count;
     const char *match;              // colorimetric: closest reference's name, NULL if none
+    const char *color;              // colorimetric: closest reference's color, NULL if none
     channel_reading_t raw;          // averaged raw channels (lateral flow: T line)
     channel_reading_t reflectance;  // colorimetric: raw / white. count 0 otherwise
 } strip_result_t;

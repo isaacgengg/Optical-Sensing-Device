@@ -87,6 +87,7 @@ strip_result_t strip_analyze(const channel_reading_t *samples, size_t n,
     result.score = best;
     if (best <= cfg->max_distance) {
         result.match = best_ref->name;
+        result.color = best_ref->color;
         result.verdict = best_ref->verdict;
     }
     return result;

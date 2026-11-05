@@ -37,7 +37,7 @@ static void test_average_zero_samples(void)
 static const channel_reading_t WHITE = {.values = {1000, 2000}, .count = 2};
 static const color_ref_t REFS[] = {
     {.name = "clear", .verdict = STRIP_NEGATIVE, .reflectance = {0.9f, 0.9f}},
-    {.name = "blue", .verdict = STRIP_POSITIVE, .reflectance = {0.8f, 0.2f}},
+    {.name = "blue", .color = "blue", .verdict = STRIP_POSITIVE, .reflectance = {0.8f, 0.2f}},
 };
 static const strip_config_t CFG = {
     .mode = STRIP_MODE_COLORIMETRIC, .white = &WHITE, .refs = REFS, .ref_count = 2,
@@ -63,6 +63,7 @@ static void test_color_matches_nearest_reference(void)
     strip_result_t r = color(800, 400, &CFG);  // refl 0.8, 0.2: exactly "blue"
     TEST_ASSERT_EQUAL(STRIP_POSITIVE, r.verdict);
     TEST_ASSERT_EQUAL_STRING("blue", r.match);
+    TEST_ASSERT_EQUAL_STRING("blue", r.color);
     TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.0f, r.score);
     TEST_ASSERT_EQUAL(STRIP_MODE_COLORIMETRIC, r.mode);
 
@@ -77,6 +78,7 @@ static void test_color_too_far_from_every_reference_is_invalid(void)
     strip_result_t r = color(100, 1800, &CFG);  // refl 0.1, 0.9: no such pad
     TEST_ASSERT_EQUAL(STRIP_INVALID, r.verdict);
     TEST_ASSERT_NULL(r.match);
+    TEST_ASSERT_NULL(r.color);
     TEST_ASSERT_TRUE(r.score > CFG.max_distance);
 }
 
