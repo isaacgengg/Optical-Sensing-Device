@@ -44,3 +44,17 @@ fp-lib-table  text eol=lf
 *.gif  binary
 *.bmp  binary
 *.zip  binary
+
+# Inventor (binary; .ipj is UTF-16 XML)
+*.ipt  binary
+*.iam  binary
+*.idw  binary
+*.dwg  binary
+*.ipn  binary
+*.ipj  binary
+
+# CAD exchange formats (text, but large and not worth diffing)
+*.step -diff
+*.stp  -diff
+*.stl  binary
+*.3mf  binary

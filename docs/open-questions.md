@@ -12,6 +12,6 @@
 | Colorimetric: which pad colors map to which results (reference chart or calibration curve)? | | | | Nearest-match against reference reflectance curves in `firmware/main/color_refs.h` (made-up white, clear, purple, orange); replace with measured pads |
 | MobileDetect BLE message format, service and characteristic UUIDs? | | | | Placeholder v1 format (`mobiledetect_protocol`: mode, verdict, T and C scores, sample count), random 128-bit UUIDs |
 | Does MobileDetect need to trigger measurements from the phone? | | | | No; measurements start from device input (`command_source`, keyboard stand-in for now) |
-| Exact ESP32 variant and final pin assignments? | | | | Plain `esp32` target; placeholder pins in `firmware/main/board.h` |
+| Exact ESP32 variant and final pin assignments? | | | Variant answered: ESP32-D0WD-V3 rev v3.1 on a Hosyond ESP-WROOM-32 30-pin devkit. Pins still open | `esp32` target; placeholder pins in `firmware/main/board.h` (the enclosure wiring uses its SDA 21 / SCL 22) |
 | LED: does intensity control matter (PWM) or is on/off enough? | | | | On/off via GPIO (`led_gpio`) |
 | Repo hosting and IP: should this repo be private, and under which org? | | | | Keep private until decided |

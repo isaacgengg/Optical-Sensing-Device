@@ -26,7 +26,7 @@ python3 tools/run.py tcs3448 PORT
 That builds, flashes and opens the serial monitor on Linux, macOS or Windows (`py` instead of `python3` on Windows). It needs Docker and Python; no ESP-IDF install. **[docs/setup.md](docs/setup.md)** covers the one-time install, finding `PORT`, the other builds (`mock`, `ble`, `tcs3448-ble`), QEMU and host tests.
 
 - **Measure:** in the serial monitor, press `l` (lateral flow) or `c` (colorimetric). Quit with Ctrl+].
-- **Target:** ESP-IDF v5.5.5 (v5.3+ needed for the `i2c_master` API), chip `esp32`. TODO(team): confirm the exact ESP32 variant on the PCB.
+- **Target:** ESP-IDF v5.5.5 (v5.3+ needed for the `i2c_master` API), chip `esp32`: an ESP32-D0WD-V3 (silicon rev v3.1) on a Hosyond ESP-WROOM-32 30-pin devkit (CP2102).
 
 ## Switch sensor and output
 
@@ -78,6 +78,5 @@ Everything marked `TODO(team)` in the repo (`grep -rn "TODO(team)"`):
 | LED intensity control (PWM via LEDC) | `firmware/adapters/led_gpio/led_gpio.c` |
 | MobileDetect message format | `firmware/adapters/mobiledetect_protocol/` |
 | MobileDetect BLE service and characteristic UUIDs | `firmware/adapters/ble_mobiledetect/ble_mobiledetect.c` |
-| ESP32 variant | this README, `idf.py set-target` |
 
 Open questions behind these are tracked in [docs/open-questions.md](docs/open-questions.md).
