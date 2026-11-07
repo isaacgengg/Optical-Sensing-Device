@@ -2,6 +2,9 @@
 // section 10. All I2C access goes through i2c_bus, never the ESP-IDF I2C API.
 
 #include "tcs3448.h"
+#include "esp_log.h"
+
+static const char *TAG = "tcs3448";
 
 // Registers 0x58-0x66 need CFG0.REG_BANK = 1; everything else needs 0.
 #define REG_ID       0x5A
@@ -173,9 +176,23 @@ static esp_err_t tcs3448_read(void *ctx, channel_reading_t *out)
         return ESP_ERR_INVALID_STATE;  // init() and set_integration_ms() first
     }
 
+    // If the chip resets after init (brownout, loose wire) auto_smux falls back
+    // to 6-channel mode and 8 of the 14 channels silently read 0. Check and
+    // restore it every read. Warning once = chip reset; every read = the
+    // write isn't taking.
+    uint8_t cfg20 = 0;
+    esp_err_t err = i2c_bus_read_regs(s->dev, REG_CFG20, &cfg20, 1);
+    if (err == ESP_OK && (cfg20 & CFG20_AUTO_SMUX_MASK) != CFG20_AUTO_SMUX_18) {
+        ESP_LOGW(TAG, "CFG20=0x%02x: auto_smux not 18-channel, rewriting", cfg20);
+        err = i2c_bus_write_reg(s->dev, REG_CFG20,
+                                (uint8_t)((cfg20 & ~CFG20_AUTO_SMUX_MASK) | CFG20_AUTO_SMUX_18));
+    }
+
     // Start a fresh measurement so the data can't predate the caller's
     // setup (e.g. the LED turning on).
-    esp_err_t err = i2c_bus_write_reg(s->dev, REG_ENABLE, ENABLE_PON | ENABLE_ALS_EN);
+    if (err == ESP_OK) {
+        err = i2c_bus_write_reg(s->dev, REG_ENABLE, ENABLE_PON | ENABLE_ALS_EN);
+    }
     if (err == ESP_OK) {
         err = wait_ready(s);
     }

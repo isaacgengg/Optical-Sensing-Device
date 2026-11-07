@@ -46,9 +46,10 @@ static esp_err_t log_publish(void *ctx, const strip_result_t *result)
     if (result == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
-    ESP_LOGI(TAG, "mode=%s verdict=%s match=%s score=%.3f control=%.2f samples=%u",
+    ESP_LOGI(TAG, "mode=%s verdict=%s match=%s color=%s score=%.3f control=%.2f samples=%u",
              mode_name(result->mode), verdict_name(result->verdict),
              result->match ? result->match : "none",
+             result->color ? result->color : "none",
              (double)result->score, (double)result->control_score,
              (unsigned)result->sample_count);
     log_channels("raw", &result->raw, "%.0f, ");
