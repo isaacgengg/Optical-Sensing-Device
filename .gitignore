@@ -24,3 +24,7 @@ desktop.ini
 *.kicad_prl
 fp-info-table
 *.lck
+
+# Inventor backups and local state
+OldVersions/
+*.ipj.bak

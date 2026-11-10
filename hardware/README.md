@@ -1,6 +1,7 @@
 # Hardware
 
-This folder holds the PCB design files (KiCad), the BOM, fab outputs
+This folder holds the PCB design files (KiCad), the enclosure CAD
+(Inventor, in `enclosure/`), the BOM, fab outputs
 (Gerbers, drill files, pick-and-place) for each board revision, and the
 datasheets for the parts we use.
 
