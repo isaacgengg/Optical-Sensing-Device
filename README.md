@@ -19,6 +19,10 @@ tools/      run.py (build/flash/monitor), check_layers.sh (architecture check)
 
 ## Getting started
 
+**Setting up both sensors? Start with [the dual-sensor setup README](README-DUAL-SENSOR.md).**
+It covers wiring, flashing this branch, calibration, the dashboard, and what
+stays the same in the existing workflow.
+
 ```
 python3 tools/run.py dual PORT
 ```
