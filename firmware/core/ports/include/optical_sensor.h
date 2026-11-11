@@ -9,6 +9,8 @@
 typedef struct {
     esp_err_t (*init)(void *ctx);
     esp_err_t (*set_integration_ms)(void *ctx, uint16_t ms);
+    // Gain multiplier, e.g. 256. Returns INVALID_ARG for unsupported gains.
+    esp_err_t (*set_gain)(void *ctx, uint16_t gain);
     // Blocks until a fresh reading is available, then fills `out`.
     esp_err_t (*read)(void *ctx, channel_reading_t *out);
     size_t channel_count;

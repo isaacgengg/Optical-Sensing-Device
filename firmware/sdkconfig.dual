@@ -1,0 +1,3 @@
+# TCS3448 first/test line and color pad; AS7343 second/control line.
+CONFIG_DC_SENSOR_TCS3448=y
+CONFIG_DC_LFA_AS7343=y

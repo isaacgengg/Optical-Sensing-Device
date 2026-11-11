@@ -20,13 +20,18 @@ tools/      run.py (build/flash/monitor), check_layers.sh (architecture check)
 ## Getting started
 
 ```
-python3 tools/run.py tcs3448 PORT
+python3 tools/run.py dual PORT
 ```
 
-That builds, flashes and opens the serial monitor on Linux, macOS or Windows (`py` instead of `python3` on Windows). It needs Docker and Python; no ESP-IDF install. **[docs/setup.md](docs/setup.md)** covers the one-time install, finding `PORT`, the other builds (`mock`, `ble`, `tcs3448-ble`), QEMU and host tests.
+That builds, flashes and opens the serial monitor on Linux, macOS or Windows (`py` instead of `python3` on Windows). It needs Docker and Python; no ESP-IDF install. **[docs/setup.md](docs/setup.md)** covers the one-time install, finding `PORT`, the other builds (`mock`, `ble`, `tcs3448`, `tcs3448-ble`, `dual-ble`), QEMU and host tests.
 
 - **Measure:** in the serial monitor, press `l` (lateral flow) or `c` (colorimetric). Quit with Ctrl+].
 - **Target:** ESP-IDF v5.5.5 (v5.3+ needed for the `i2c_master` API), chip `esp32`: an ESP32-D0WD-V3 (silicon rev v3.1) on a Hosyond ESP-WROOM-32 30-pin devkit (CP2102).
+
+The dual build reads **TCS3448 at the first/test line** and **AS7343 at the
+second/control line** for LFA. Colorimetric mode reads only TCS3448.
+Hardware LFA reports INVALID until zone calibration is supplied; both raw
+spectra are printed for collecting it. See [dual-sensor setup and calibration](docs/dual-sensor-lfa.md).
 
 ## Switch sensor and output
 
@@ -35,7 +40,8 @@ The build picks these up from the `sdkconfig.*` files in `firmware/`:
 | File | Sets |
 |---|---|
 | `sdkconfig.defaults` | Always applied: mock sensor, serial-log output |
-| `sdkconfig.tcs3448` | Real TCS3448 sensor |
+| `sdkconfig.tcs3448` | TCS3448 only; colorimetric available, LFA unavailable |
+| `sdkconfig.dual` | TCS3448 test/color + AS7343 control |
 | `sdkconfig.ble` | Results over BLE instead of the log |
 
 To add a build, add an entry to `BUILDS` in `tools/run.py`. Other options (BLE device name, etc.) are under **DetectaChem firmware** in `idf.py menuconfig`.
@@ -67,12 +73,12 @@ Everything marked `TODO(team)` in the repo (`grep -rn "TODO(team)"`):
 
 | Placeholder | Where |
 |---|---|
-| Sensor gain (`DEFAULT_AGAIN`, 256x) | `firmware/adapters/tcs3448/tcs3448.c` |
+| Per-zone gain/exposure (initially 256x / 100 ms) | `firmware/main/lfa_refs.h`, `firmware/main/main.c` |
 | Pin and bus assignments (I2C port/SDA/SCL/speed, LED GPIO) | `firmware/main/board.h` |
 | I2C pull-ups: internal pull-ups enabled until the PCB has its own | `firmware/platform/i2c_bus/i2c_bus.c` |
 | Strip analysis algorithm | `firmware/core/domain/strip_analysis.c` |
-| Lateral flow thresholds (`t_threshold`, `c_threshold`) | `firmware/main/main.c` |
-| Colorimetric white reference, pad colors, match distance (made-up values) | `firmware/main/color_refs.h` |
+| LFA zone dark/blank references, visible channels and contrast thresholds | `firmware/main/lfa_refs.h` |
+| Colorimetric box-rig references, placeholder assay labels and match distance | `firmware/main/color_refs.h` |
 | Measurement parameters (integration time, LED settle, sample count) | `firmware/main/main.c` |
 | Mock sensor data (made-up values) | `firmware/adapters/mock_sensor/mock_data.c` |
 | LED intensity control (PWM via LEDC) | `firmware/adapters/led_gpio/led_gpio.c` |

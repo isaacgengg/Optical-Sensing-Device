@@ -68,6 +68,7 @@ typedef struct {
     i2c_bus_dev_t *dev;
     timebase_t *time;
     uint32_t integration_ms;
+    uint8_t gain_code;
 } tcs3448_ctx_t;
 
 static tcs3448_ctx_t s_ctx;
@@ -126,12 +127,15 @@ static esp_err_t tcs3448_init(void *ctx)
     if (err == ESP_OK) {
         err = update_bits(s->dev, REG_CFG1, CFG1_AGAIN_MASK, DEFAULT_AGAIN);
     }
+    s->integration_ms = 0;
+    s->gain_code = DEFAULT_AGAIN;
     return err;
 }
 
 static esp_err_t tcs3448_set_integration_ms(void *ctx, uint16_t ms)
 {
     tcs3448_ctx_t *s = ctx;
+    if (s->dev == NULL) return ESP_ERR_INVALID_STATE;
     // Round to the nearest ATIME step.
     uint32_t steps = ((uint32_t)ms * 1000 + ATIME_STEP_US / 2) / ATIME_STEP_US;
     if (steps < 1 || steps > 256) {
@@ -149,10 +153,22 @@ static esp_err_t tcs3448_set_integration_ms(void *ctx, uint16_t ms)
     return err;
 }
 
+static esp_err_t tcs3448_set_gain(void *ctx, uint16_t gain)
+{
+    tcs3448_ctx_t *s = ctx;
+    if (s->dev == NULL) return ESP_ERR_INVALID_STATE;
+    if (gain == 0 || gain > 2048 || (gain & (gain - 1)) != 0) return ESP_ERR_INVALID_ARG;
+    uint8_t code = 1;  // 1x; register code 0 (0.5x) is not exposed by this port
+    for (uint16_t g = gain; g > 1; g >>= 1) code++;
+    esp_err_t err = update_bits(s->dev, REG_CFG1, CFG1_AGAIN_MASK, code);
+    if (err == ESP_OK) s->gain_code = code;
+    return err;
+}
+
 static esp_err_t wait_ready(tcs3448_ctx_t *s)
 {
     uint32_t budget_ms = 3 * s->integration_ms + READY_MARGIN_MS;
-    for (uint32_t waited = 0; waited <= budget_ms; waited += POLL_MS) {
+    for (uint32_t waited = 0; waited < budget_ms; waited += POLL_MS) {
         uint8_t status2;
         esp_err_t err = i2c_bus_read_regs(s->dev, REG_STATUS2, &status2, 1);
         if (err != ESP_OK) {
@@ -187,6 +203,13 @@ static esp_err_t tcs3448_read(void *ctx, channel_reading_t *out)
         err = i2c_bus_write_reg(s->dev, REG_CFG20,
                                 (uint8_t)((cfg20 & ~CFG20_AUTO_SMUX_MASK) | CFG20_AUTO_SMUX_18));
     }
+
+    if (err == ESP_OK) err = i2c_bus_write_reg(s->dev, REG_ENABLE, ENABLE_PON);
+    if (err == ESP_OK) {
+        s->time->delay_ms(s->time->ctx, 1);
+        err = update_bits(s->dev, REG_CFG1, CFG1_AGAIN_MASK, s->gain_code);
+    }
+    if (err == ESP_OK) err = tcs3448_set_integration_ms(ctx, (uint16_t)s->integration_ms);
 
     // Start a fresh measurement so the data can't predate the caller's
     // setup (e.g. the LED turning on).
@@ -227,6 +250,7 @@ optical_sensor_t *tcs3448_create(i2c_bus_handle_t *bus, uint8_t address, timebas
         .init = tcs3448_init,
         .set_integration_ms = tcs3448_set_integration_ms,
         .read = tcs3448_read,
+        .set_gain = tcs3448_set_gain,
         .channel_count = TCS3448_CHANNEL_COUNT,
         .ctx = &s_ctx,
     };

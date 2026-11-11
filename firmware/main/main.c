@@ -8,6 +8,7 @@
 
 #include "board.h"
 #include "color_refs.h"
+#include "lfa_refs.h"
 #include "measurement.h"
 #include "freertos_timebase.h"
 #include "led_gpio.h"
@@ -18,6 +19,10 @@
 #include "tcs3448.h"
 #else
 #include "mock_sensor.h"
+#endif
+
+#if CONFIG_DC_LFA_AS7343
+#include "as7343.h"
 #endif
 
 #if CONFIG_DC_SINK_BLE
@@ -35,19 +40,23 @@ static command_source_t *s_input;
 // Tune once the optics exist.
 static const measurement_config_t s_cfg[] = {
     [STRIP_MODE_LATERAL_FLOW] = {
-        .integration_ms = 100,
+        .integration_ms = LFA_TEST_INTEGRATION_MS,
+        .gain = LFA_TEST_GAIN,
+        .control_integration_ms = LFA_CONTROL_INTEGRATION_MS,
+        .control_gain = LFA_CONTROL_GAIN,
         .led_intensity_pct = 100,
         .led_settle_ms = 50,
         .sample_count = 5,
         .analysis = {
             .mode = STRIP_MODE_LATERAL_FLOW,
-            .t_threshold = 1200.0f,         // TODO(team): placeholder
-            .c_threshold = 100.0f,          // TODO(team): placeholder
+            .test_ref = &LFA_TEST_REF,
+            .control_ref = &LFA_CONTROL_REF,
             .lfa_format = LFA_COMPETITIVE,  // confirmed: C+T = negative, C only = positive
         },
     },
     [STRIP_MODE_COLORIMETRIC] = {
         .integration_ms = 100,
+        .gain = 256,
         .led_intensity_pct = 100,
         .led_settle_ms = 50,
         .sample_count = 5,
@@ -89,9 +98,22 @@ void app_main(void)
         return;
     }
     i2c_bus_scan(bus);
-    s_deps.sensor = tcs3448_create(bus, BOARD_SENSOR_I2C_ADDR, s_deps.time);
+    s_deps.color_sensor = tcs3448_create(bus, BOARD_TCS3448_I2C_ADDR, s_deps.time);
+    s_deps.test_sensor = s_deps.color_sensor;
+    ESP_LOGI(TAG, "source=hardware first/test=TCS3448@0x59 color=TCS3448@0x59");
+#if CONFIG_DC_LFA_AS7343
+    s_deps.control_sensor = as7343_create(bus, BOARD_AS7343_I2C_ADDR, s_deps.time);
+    ESP_LOGI(TAG, "second/control=AS7343@0x39");
+#endif
 #else
-    s_deps.sensor = mock_sensor_create(mock_default_table, mock_default_table_len);
+    static mock_sensor_storage_t primary_mock, control_mock;
+    static const channel_reading_t control_table[] = {
+        {.values = {[4] = 500}, .count = 14},
+    };
+    s_deps.color_sensor = mock_sensor_create_in(&primary_mock, mock_default_table, mock_default_table_len);
+    s_deps.test_sensor = s_deps.color_sensor;
+    s_deps.control_sensor = mock_sensor_create_in(&control_mock, control_table, 1);
+    ESP_LOGW(TAG, "source=MOCK first/test and second/control are simulated");
 #endif
 
 #if CONFIG_DC_SINK_BLE
@@ -110,6 +132,16 @@ void app_main(void)
         return;
     }
 
+    if (s_deps.control_init_error != ESP_OK) {
+        ESP_LOGW(TAG, "LFA unavailable: second/control sensor init: %s; colorimetric remains available",
+                 esp_err_to_name(s_deps.control_init_error));
+    }
+#if CONFIG_DC_LFA_AS7343
+    if (LFA_TEST_REF.channel_mask == 0 || LFA_CONTROL_REF.channel_mask == 0) {
+        ESP_LOGW(TAG, "LFA calibration required in lfa_refs.h; raw spectra available with 'l'");
+    }
+#endif
+
     s_input = console_input_create();
     err = s_input->init(s_input->ctx);
     if (err != ESP_OK) {
@@ -117,7 +149,6 @@ void app_main(void)
         return;
     }
 
-    // 8 KB: measurement_run keeps up to 32 samples (~2.2 KB) on the stack, and
-    // printf of floats in the log sink needs ~1-2 KB more. 4 KB overflowed.
+    // Samples are static; allow room for result structs and float logging.
     xTaskCreate(measurement_task, "measure", 8192, NULL, 5, NULL);
 }

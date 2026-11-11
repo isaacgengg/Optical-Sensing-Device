@@ -7,8 +7,8 @@
 | Strip types: lateral flow, colorimetric, or both? | | | Answered: both, as separate tests | Two analysis paths in the domain; mode chosen per test at runtime |
 | How is the test mode chosen? | | | Tentative: keypad button on the device | Keypad press sets the mode before each test |
 | Keypad: which part, how many keys, matrix or individual GPIOs? Is there a display or other feedback for the selected mode? | | | | None; no keypad adapter yet |
-| Measurement method: are test and control lines measured separately? | | | | Yes, the optics must separate them. Until decided, the use case reads a T sample set then a C sample set from the one sensor (`measurement.c` step 5); `strip_analyze_lateral_flow` takes them separately |
-| Lateral flow format: standard (T line = positive) or competitive (T line = negative)? | | | | Standard (`lfa_format` in `main.c`; both are supported) |
+| Measurement method: are test and control lines measured separately? | | | Answered: two sensors | First/test line: TCS3448 (0x59); second/control line: AS7343 (0x39). Alternating reads under shared illumination. Optical alignment and per-zone calibration require bench validation. |
+| Lateral flow format: standard or competitive? | | | Competitive selected | C+T = negative, C only = positive; absent C = invalid. Standard also supported. |
 | Colorimetric: which pad colors map to which results (reference chart or calibration curve)? | | | | Nearest-match against reference reflectance curves in `firmware/main/color_refs.h` (made-up white, clear, purple, orange); replace with measured pads |
 | MobileDetect BLE message format, service and characteristic UUIDs? | | | | Placeholder v1 format (`mobiledetect_protocol`: mode, verdict, T and C scores, sample count), random 128-bit UUIDs |
 | Does MobileDetect need to trigger measurements from the phone? | | | | No; measurements start from device input (`command_source`, keyboard stand-in for now) |

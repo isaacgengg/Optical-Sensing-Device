@@ -12,8 +12,9 @@ channel_reading_t strip_average(const channel_reading_t *samples, size_t n);
 strip_result_t strip_analyze(const channel_reading_t *samples, size_t n,
                              const strip_config_t *cfg);
 
-// Lateral flow: `n` samples of the T line and `n` of the C line. No C line
-// means STRIP_INVALID; otherwise the T line decides, per cfg->lfa_format.
+// Lateral flow: separately calibrated contrast from `n` samples per zone.
+// Missing/invalid calibration or absent C line => INVALID. Otherwise the T
+// line decides per cfg->lfa_format. Both raw spectra are retained.
 strip_result_t strip_analyze_lateral_flow(const channel_reading_t *t_samples,
                                           const channel_reading_t *c_samples,
                                           size_t n, const strip_config_t *cfg);

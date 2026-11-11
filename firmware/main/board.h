@@ -7,4 +7,5 @@
 #define BOARD_I2C_SCL    22
 #define BOARD_I2C_HZ     400000
 #define BOARD_LED_GPIO   4
-#define BOARD_SENSOR_I2C_ADDR 0x59   // TCS3448, fixed (datasheet table 8)
+#define BOARD_TCS3448_I2C_ADDR 0x59  // first line (test) and colorimetric pad
+#define BOARD_AS7343_I2C_ADDR  0x39  // second line (control)

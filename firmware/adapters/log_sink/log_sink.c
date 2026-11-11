@@ -52,7 +52,14 @@ static esp_err_t log_publish(void *ctx, const strip_result_t *result)
              result->color ? result->color : "none",
              (double)result->score, (double)result->control_score,
              (unsigned)result->sample_count);
-    log_channels("raw", &result->raw, "%.0f, ");
+    if (result->mode == STRIP_MODE_LATERAL_FLOW) {
+        ESP_LOGI(TAG, "zones: first=test second=control; metric=contrast calibration=%s",
+                 result->lfa_calibration_valid ? "valid" : "missing_or_invalid");
+        log_channels("test_raw", &result->raw, "%.0f, ");
+        log_channels("control_raw", &result->control_raw, "%.0f, ");
+    } else {
+        log_channels("raw", &result->raw, "%.0f, ");
+    }
     log_channels("refl", &result->reflectance, "%.3f, ");
     return ESP_OK;
 }

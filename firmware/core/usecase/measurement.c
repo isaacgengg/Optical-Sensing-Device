@@ -1,91 +1,76 @@
 #include "measurement.h"
 #include "strip_analysis.h"
 
-// [0] = samples (T line for lateral flow), [1] = C line samples.
-// ponytail: static so ~4.4 KB stays off the task stack; not reentrant, which is
-// fine with one measurement task.
+// Single measurement task. Separate buffers, never intermix the two zones.
 static channel_reading_t s_samples[2][MEASUREMENT_MAX_SAMPLES];
 
-static esp_err_t read_samples(optical_sensor_t *sensor, channel_reading_t *out, size_t n)
+static bool sensor_valid(const optical_sensor_t *s)
 {
-    esp_err_t err = ESP_OK;
-    for (size_t i = 0; i < n && err == ESP_OK; i++) {
-        err = sensor->read(sensor->ctx, &out[i]);
-    }
+    return s && s->init && s->set_integration_ms && s->set_gain && s->read;
+}
+
+static bool deps_valid(const measurement_deps_t *d)
+{
+    return d && sensor_valid(d->color_sensor) && sensor_valid(d->test_sensor) &&
+           d->light && d->light->init && d->light->set && d->time &&
+           d->time->delay_ms && d->sink && d->sink->publish;
+}
+
+esp_err_t measurement_init(measurement_deps_t *d)
+{
+    if (!deps_valid(d)) return ESP_ERR_INVALID_ARG;
+    esp_err_t err = d->color_sensor->init(d->color_sensor->ctx);
+    if (err == ESP_OK && d->test_sensor != d->color_sensor)
+        err = d->test_sensor->init(d->test_sensor->ctx);
+    if (err != ESP_OK) return err;
+    // A missing secondary must not prevent TCS-only color measurements.
+    d->control_init_error = ESP_ERR_NOT_FOUND;
+    if (sensor_valid(d->control_sensor) && d->control_sensor != d->test_sensor &&
+        d->control_sensor != d->color_sensor)
+        d->control_init_error = d->control_sensor->init(d->control_sensor->ctx);
+    return d->light->init(d->light->ctx);
+}
+
+static esp_err_t configure(optical_sensor_t *sensor, uint16_t ms, uint16_t gain)
+{
+    esp_err_t err = sensor->set_gain(sensor->ctx, gain);
+    if (err == ESP_OK) err = sensor->set_integration_ms(sensor->ctx, ms);
     return err;
 }
 
-static bool deps_valid(const measurement_deps_t *deps)
+esp_err_t measurement_run(const measurement_deps_t *d,
+                          const measurement_config_t *cfg, strip_result_t *out)
 {
-    return deps != NULL && deps->sensor != NULL && deps->light != NULL &&
-           deps->time != NULL && deps->sink != NULL;
-}
+    if (!deps_valid(d) || !cfg || !out || cfg->sample_count == 0 ||
+        cfg->sample_count > MEASUREMENT_MAX_SAMPLES ||
+        (cfg->analysis.mode != STRIP_MODE_COLORIMETRIC &&
+         cfg->analysis.mode != STRIP_MODE_LATERAL_FLOW)) return ESP_ERR_INVALID_ARG;
+    *out = (strip_result_t){.mode = cfg->analysis.mode, .verdict = STRIP_INVALID};
+    bool lfa = cfg->analysis.mode == STRIP_MODE_LATERAL_FLOW;
+    if (lfa && (!sensor_valid(d->control_sensor) || d->control_sensor == d->test_sensor))
+        return ESP_ERR_INVALID_STATE;
+    if (lfa && d->control_init_error != ESP_OK) return d->control_init_error;
+    optical_sensor_t *primary = lfa ? d->test_sensor : d->color_sensor;
+    esp_err_t err = configure(primary, cfg->integration_ms, cfg->gain);
+    if (err == ESP_OK && lfa)
+        err = configure(d->control_sensor, cfg->control_integration_ms, cfg->control_gain);
+    if (err != ESP_OK) return err;
 
-esp_err_t measurement_init(const measurement_deps_t *deps)
-{
-    if (!deps_valid(deps)) {
-        return ESP_ERR_INVALID_ARG;
+    err = d->light->set(d->light->ctx, true, cfg->led_intensity_pct);
+    if (err == ESP_OK) {
+        d->time->delay_ms(d->time->ctx, cfg->led_settle_ms);
+        for (size_t i = 0; i < cfg->sample_count && err == ESP_OK; i++) {
+            // First physical line = TCS/test, second = AS7343/control.
+            err = primary->read(primary->ctx, &s_samples[0][i]);
+            if (err == ESP_OK && lfa)
+                err = d->control_sensor->read(d->control_sensor->ctx, &s_samples[1][i]);
+        }
     }
-    esp_err_t err = deps->sensor->init(deps->sensor->ctx);
-    if (err != ESP_OK) {
-        return err;
-    }
-    return deps->light->init(deps->light->ctx);
-}
+    esp_err_t off_err = d->light->set(d->light->ctx, false, 0);
+    if (err != ESP_OK) return err;
+    if (off_err != ESP_OK) return off_err;
 
-esp_err_t measurement_run(const measurement_deps_t *deps,
-                          const measurement_config_t *cfg,
-                          strip_result_t *out_result)
-{
-    // 1. Validate.
-    if (!deps_valid(deps) || cfg == NULL || out_result == NULL ||
-        cfg->sample_count == 0 || cfg->sample_count > MEASUREMENT_MAX_SAMPLES) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    optical_sensor_t *sensor = deps->sensor;
-    illuminator_t *light = deps->light;
-
-    // 2. Integration time.
-    esp_err_t err = sensor->set_integration_ms(sensor->ctx, cfg->integration_ms);
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    // 3. Light on.
-    err = light->set(light->ctx, true, cfg->led_intensity_pct);
-    if (err != ESP_OK) {
-        light->set(light->ctx, false, 0);
-        return err;
-    }
-
-    // 4. Settle.
-    deps->time->delay_ms(deps->time->ctx, cfg->led_settle_ms);
-
-    // 5. Sample. Lateral flow reads a T set, then a C set.
-    // ponytail: stand-in until the optics decide how T and C are captured
-    // separately (two sensors, two apertures, or a scan). Only this step changes.
-    bool lateral_flow = cfg->analysis.mode == STRIP_MODE_LATERAL_FLOW;
-    err = read_samples(sensor, s_samples[0], cfg->sample_count);
-    if (err == ESP_OK && lateral_flow) {
-        err = read_samples(sensor, s_samples[1], cfg->sample_count);
-    }
-
-    // 6. Light off, always. A read error takes precedence over an off error.
-    esp_err_t off_err = light->set(light->ctx, false, 0);
-    if (err != ESP_OK) {
-        return err;
-    }
-    if (off_err != ESP_OK) {
-        return off_err;
-    }
-
-    // 7. Analyze.
-    strip_result_t result = lateral_flow
-        ? strip_analyze_lateral_flow(s_samples[0], s_samples[1], cfg->sample_count, &cfg->analysis)
-        : strip_analyze(s_samples[0], cfg->sample_count, &cfg->analysis);
-
-    // 8. Publish and return.
-    *out_result = result;
-    return deps->sink->publish(deps->sink->ctx, &result);
+    *out = lfa ? strip_analyze_lateral_flow(s_samples[0], s_samples[1], cfg->sample_count, &cfg->analysis)
+               : strip_analyze(s_samples[0], cfg->sample_count, &cfg->analysis);
+    return d->sink->publish(d->sink->ctx, out);
 }

@@ -8,7 +8,7 @@
     python3 tools/run.py qemu           run the mock build in the QEMU emulator (no board)
     python3 tools/run.py test           host tests and layer check
 
-Builds: mock, tcs3448, ble, tcs3448-ble. On Windows use `py` instead of `python3`.
+Builds: mock, tcs3448, dual, ble, tcs3448-ble, dual-ble. On Windows use `py` instead of `python3`.
 
 Builds run in Docker (espressif/idf), so no ESP-IDF install is needed. Flashing
 and the monitor run on this computer with esptool, because Docker Desktop on
@@ -30,6 +30,8 @@ VENV = REPO / ".venv"
 # Build name -> sdkconfig files layered on top of sdkconfig.defaults.
 BUILDS = {
     "mock": [],
+    "dual": ["sdkconfig.dual"],
+    "dual-ble": ["sdkconfig.dual", "sdkconfig.ble"],
     "tcs3448": ["sdkconfig.tcs3448"],
     "ble": ["sdkconfig.ble"],
     "tcs3448-ble": ["sdkconfig.tcs3448", "sdkconfig.ble"],

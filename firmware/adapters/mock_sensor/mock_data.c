@@ -6,13 +6,9 @@
 // TODO(team): replace with recorded readings once real data exists
 // (see firmware/test/host/data/README.md).
 //
-// Laid out for lateral flow with sample_count = 5: each measurement reads 5 T
-// rows, then 5 C rows, so repeated 'l' presses cycle POSITIVE, NEGATIVE,
-// INVALID with the thresholds in main.c (T >= 1200, C >= 100; channel means
-// here are ~1300 strong, ~929 baseline, ~46 missing). A colorimetric
-// measurement reads only 5 rows, so it shifts the cycle.
-// ponytail: higher = line present matches the placeholder metric, not physics
-// (a real line darkens the strip).
+// Legacy table retained for primary/colorimetric simulation. Labels below
+// describe the old single-sensor demo; they are not assay ground truth.
+// The dual-zone mock now uses an independent control stream in main.c.
 
 #include "mock_sensor.h"
 

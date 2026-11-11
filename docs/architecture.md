@@ -58,7 +58,7 @@ port headers; adapters implement them.
 
 | Port | Implemented by |
 |---|---|
-| `optical_sensor.h` | `mock_sensor`, `tcs3448` |
+| `optical_sensor.h` | `mock_sensor`, `tcs3448`, `as7343` |
 | `illuminator.h` | `led_gpio` |
 | `timebase.h` | `freertos_timebase` |
 | `result_sink.h` | `log_sink`, `ble_mobiledetect` |
@@ -73,9 +73,14 @@ without calling FreeRTOS, which keeps it host-testable.
 
 - The **domain decides**: given these readings, what is the result? Pure
   functions, trivially testable.
-- The **use case does**: set integration time, light on, wait, read samples,
+- The **use case does**: set gain and integration time, light on, wait, read samples,
   light off, analyze, publish. It sequences I/O through ports and owns
   timing, but contains no strip rules of its own.
+
+LFA reads the first/test zone through TCS3448 and the second/control zone
+through AS7343, alternating the two reads for each sample pair. Colorimetric
+uses TCS3448 alone. Each LFA zone has its own dark/blank calibration and
+threshold; see [dual-sensor LFA](dual-sensor-lfa.md).
 
 ## How to add a new sensor driver
 
