@@ -67,6 +67,8 @@ Everything the script can do:
 | `python3 tools/run.py mock PORT` | Same, with the **mock sensor** (replays made-up readings, no sensor needed) |
 | `python3 tools/run.py ble PORT` | Mock sensor, results sent over **Bluetooth** to the [dashboard](../visualization/README.md) |
 | `python3 tools/run.py tcs3448-ble PORT` | Real sensor, results over Bluetooth |
+| `python3 tools/run.py dual PORT --sensor-leds` | Also light the sensor boards' onboard white LEDs with the GPIO LED (any `tcs3448`/`dual` build; builds into `build-<name>-leds`) |
+| `python3 tools/run.py dual PORT --sensor-leds --sensor-led-ma 4` | Same, dimmer: white LED current in mA, 4 (dimmest) to 258, default 20 |
 | `python3 tools/run.py tcs3448` | Build only (leave off the port) |
 | `python3 tools/run.py monitor PORT` | Reopen the monitor without rebuilding or flashing |
 | `python3 tools/run.py ports` | List USB serial ports |

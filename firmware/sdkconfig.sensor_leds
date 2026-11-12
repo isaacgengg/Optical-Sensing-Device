@@ -1,0 +1,3 @@
+# Layered on by `tools/run.py <build> --sensor-leds`: light the sensor boards'
+# onboard white LEDs alongside the GPIO LED. Needs a TCS3448 build.
+CONFIG_DC_SENSOR_LEDS=y

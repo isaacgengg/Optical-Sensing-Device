@@ -16,6 +16,7 @@
 // 3.3 V I/O needs a level shifter. GPIO must not float: tie it to VBUS for
 // 1.8 V I2C or to GND for 1.2 V.
 #pragma once
+#include <stdbool.h>
 #include <stdint.h>
 #include "optical_sensor.h"
 #include "timebase.h"
@@ -25,3 +26,8 @@
 
 // `time` is used to poll for data ready without busy-waiting.
 optical_sensor_t *tcs3448_create(i2c_bus_handle_t *bus, uint8_t address, timebase_t *time);
+
+// Onboard white LED (Adafruit breakout), driven by the chip's LED pin. `ma` is
+// clamped to 4-258 mA and rounded down to an even value. init() turns it off.
+// ESP_ERR_INVALID_STATE before init().
+esp_err_t tcs3448_set_led(bool on, uint16_t ma);
