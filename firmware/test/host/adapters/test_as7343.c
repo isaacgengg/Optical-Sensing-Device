@@ -151,6 +151,22 @@ static void test_gain_and_bus_failure(void)
     TEST_ASSERT_EQUAL_HEX8(1, bus->regs[0x80]);
 }
 
+static void test_onboard_led(void)
+{
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, as7343_set_led(true, 20));  // before init
+    bus->regs[0xCD] = 0x8A;  // left on by a previous boot
+    TEST_ASSERT_EQUAL(ESP_OK, sensor->init(sensor->ctx));
+    TEST_ASSERT_EQUAL_HEX8(0x00, bus->regs[0xCD]);  // init turns it off
+    TEST_ASSERT_EQUAL(ESP_OK, as7343_set_led(true, 20));
+    TEST_ASSERT_EQUAL_HEX8(0x88, bus->regs[0xCD]);  // LED_ACT, (20 - 4) / 2 = 8
+    TEST_ASSERT_EQUAL(ESP_OK, as7343_set_led(true, 0));
+    TEST_ASSERT_EQUAL_HEX8(0x80, bus->regs[0xCD]);  // clamped to 4 mA
+    TEST_ASSERT_EQUAL(ESP_OK, as7343_set_led(true, 1000));
+    TEST_ASSERT_EQUAL_HEX8(0xFF, bus->regs[0xCD]);  // clamped to 258 mA
+    TEST_ASSERT_EQUAL(ESP_OK, as7343_set_led(false, 20));
+    TEST_ASSERT_EQUAL_HEX8(0x08, bus->regs[0xCD]);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -164,5 +180,6 @@ int main(void)
     RUN_TEST(test_read_reports_saturation);
     RUN_TEST(test_read_times_out_without_data_ready);
     RUN_TEST(test_read_before_configure_is_rejected);
+    RUN_TEST(test_onboard_led);
     return UNITY_END();
 }

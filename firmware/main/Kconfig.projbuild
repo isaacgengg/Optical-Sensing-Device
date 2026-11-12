@@ -16,6 +16,24 @@ menu "DetectaChem firmware"
         depends on DC_SENSOR_TCS3448
         default n
 
+    config DC_SENSOR_LEDS
+        bool "Also light the sensor boards' onboard white LEDs during a measurement"
+        depends on DC_SENSOR_TCS3448
+        default n
+        help
+            Turns on the white LED on the TCS3448 breakout (and the AS7343
+            breakout in the dual build) together with the GPIO LED, for as
+            long as the GPIO LED is on.
+
+    config DC_SENSOR_LED_MA
+        int "Onboard white LED current at 100% intensity (mA)"
+        depends on DC_SENSOR_LEDS
+        range 4 258
+        default 20
+        help
+            Chip limit is 258 mA; 20 mA matches Adafruit's example. Raise it
+            only after checking the LED's rating on the breakout schematic.
+
     choice DC_SINK
         prompt "Result output"
         default DC_SINK_LOG
