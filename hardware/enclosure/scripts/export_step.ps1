@@ -4,7 +4,8 @@
 # Re-run after changing the model. The pouch is exported at its current Insertion position.
 $ErrorActionPreference = 'Stop'
 $inv = [Runtime.InteropServices.Marshal]::GetActiveObject("Inventor.Application")
-$step = $inv.ApplicationAddIns.ItemById("{90AF7F40-0C01-11D5-8E83-0050048E5B50}")  # STEP translator
+$step = $inv.ApplicationAddIns.ItemById("{90AF7F40-0C01-11D5-8E83-0010B541CD80}")  # "Translator: STEP"
+if (-not $step.Activated) { $step.Activate() }
 $root = Split-Path $PSScriptRoot
 foreach ($name in "Enclosure Assembly", "Electronics Assembly") {
     $path = Join-Path $root "$name.iam"

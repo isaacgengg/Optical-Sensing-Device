@@ -1,13 +1,15 @@
 // Generates Electronics/Wiring.ipt: insulated wires (cylinders + spheres at bends) on the perf board's top face,
-// loose leads up to the LCD backpack, and solder joints. Run with build_wiring.ps1.
+// loose leads up to the LCD backpack, and solder joints. Run with build_wiring.ps1 (after build_electronics.ps1).
 //
 // Coordinates are millimetres in the Electronics Assembly frame (perf board lower-left corner, +Z up).
-// Perf grid: HoleX(i) = 8.17 + 2.54 i, HoleY(j) = 5.79 + 2.54 j.
-//   ESP32 (USB toward +Y) right column at col 10 (X 33.57): 3V3 row 23, GND row 22, D21 row 13, D22 row 10.
-//   ESP32 left column at col 0 (X 8.17): VIN row 23.
-//   TCS3448 header at col 22 (X 64.05): VIN row 9, GND row 10, SCL row 11, SDA row 12.
-//   LCD pads at row 23: SCL col 26, SDA col 27, 5V col 28, GND col 29.
-// Wires that cross run on a raised layer (L2, L3) so insulated wires stack instead of colliding.
+// Perf grid: HoleX(i) = 8.17 + 2.54 i, HoleY(j) = 5.79 + 2.54 j. Holes are written (column, row).
+//   ESP32 right column, col 11 (X 36.11): 3V3 row 21, GND row 20, D4 row 17, D21 row 11, D22 row 8.
+//   ESP32 left column, col 1 (X 10.71): VIN row 21, GND row 20.
+//   TCS3448 header, row 9 (Y 28.65), and AS7343 header, row 2 (Y 10.87), both cols 22-27:
+//     INT col 22, GPIO col 23, SDA col 24, SCL col 25, GND col 26, VIN col 27.
+//   LCD pads, row 23 (Y 64.21): SCL col 16, SDA col 17, 5V col 18, GND col 19.
+// Colours follow the real board: SDA orange, SCL yellow, 3V3 red, GND black; 5V white.
+// Wires that cross run on raised layers (L2, L3) so insulated wires stack instead of colliding.
 using System;
 using System.Collections.Generic;
 using Inventor;
@@ -20,6 +22,8 @@ public static class Wiring
     static Application app; static TransientBRep tb; static TransientGeometry tg;
     static Point P(double x, double y, double z) { return tg.CreatePoint(x / 10, y / 10, z / 10); }
     static double[] V(double x, double y, double z) { return new[] { x, y, z }; }
+    static double HX(int i) { return 8.17 + 2.54 * i; }
+    static double HY(int j) { return 5.79 + 2.54 * j; }
 
     static SurfaceBody Tube(double[][] pts)
     {
@@ -36,7 +40,7 @@ public static class Wiring
         return body;
     }
 
-    static SurfaceBody Blobs(double[][] xy)
+    static SurfaceBody Blobs(List<double[]> xy)
     {
         SurfaceBody body = null;
         foreach (var p in xy)
@@ -71,8 +75,8 @@ public static class Wiring
         log.Add(name);
     }
 
-    const string BLUE = "Blue|Plastic - Glossy (Blue)", YELLOW = "Yellow|Plastic - Glossy (Yellow)", RED = "Red|Plastic - Glossy (Red)",
-                 BLACK = "Black|Smooth - Black", ORANGE = "Orange|Plastic - Glossy (Orange)|Red", METAL = "Aluminum - Polished|Steel - Satin";
+    const string ORANGE = "Orange|Plastic - Glossy (Orange)", YELLOW = "Yellow|Plastic - Glossy (Yellow)", RED = "Red|Plastic - Glossy (Red)",
+                 BLACK = "Black|Smooth - Black", WHITE = "White|Smooth - White", METAL = "Aluminum - Polished|Steel - Satin";
 
     public static string Build(object appObj, string path)
     {
@@ -82,35 +86,55 @@ public static class Wiring
         string tpl = app.FileManager.GetTemplateFile(DocumentTypeEnum.kPartDocumentObject, SystemOfMeasureEnum.kMetricSystemOfMeasure);
         var doc = (PartDocument)app.Documents.Add(DocumentTypeEnum.kPartDocumentObject, tpl, false);
 
-        // ESP32 to TCS3448, all on the board (layer 1)
-        Add(doc, Tube(new[] { V(33.57,31.19,L1), V(61.51,31.19,L1), V(61.51,33.73,L1), V(64.05,33.73,L1) }), "SCL (D22 to TCS)", YELLOW, log);
-        Add(doc, Tube(new[] { V(33.57,38.81,L1), V(61.51,38.81,L1), V(61.51,36.27,L1), V(64.05,36.27,L1) }), "SDA (D21 to TCS)", BLUE, log);
-        Add(doc, Tube(new[] { V(33.57,64.21,L1), V(69.13,64.21,L1), V(69.13,28.65,L1), V(64.05,28.65,L1) }), "3V3 (ESP32 to TCS VIN)", RED, log);
-        Add(doc, Tube(new[] { V(33.57,61.67,L1), V(66.59,61.67,L1), V(66.59,31.19,L1), V(64.05,31.19,L1) }), "GND (ESP32 to TCS)", BLACK, log);
-        // 5V from ESP32 VIN to the LCD pad, along the board margin
-        Add(doc, Tube(new[] { V(79.29,64.21,L1), V(79.29,66.75,L1), V(8.17,66.75,L1), V(8.17,64.21,L1) }), "5V (VIN to LCD pad)", ORANGE, log);
-        // LCD pads to the TCS3448 pins, hopping over the 3V3 and GND runs
-        Add(doc, Tube(new[] { V(74.21,64.21,L1), V(74.21,64.21,L2), V(74.21,33.73,L2), V(64.05,33.73,L2), V(64.05,33.73,L1) }), "SCL (LCD pad link)", YELLOW, log);
-        Add(doc, Tube(new[] { V(76.75,64.21,L1), V(76.75,64.21,L3), V(76.75,36.27,L3), V(64.05,36.27,L3), V(64.05,36.27,L1) }), "SDA (LCD pad link)", BLUE, log);
-        Add(doc, Tube(new[] { V(81.83,64.21,L1), V(81.83,31.19,L1), V(81.83,31.19,L2), V(64.05,31.19,L2), V(64.05,31.19,L1) }), "GND (LCD pad link)", BLACK, log);
+        double ex = HX(11), vin = HX(1);
+        double e3v3 = HY(21), eGnd = HY(20), eSda = HY(11), eScl = HY(8);
+        double tRow = HY(9), aRow = HY(2);
+        double cSda = HX(24), cScl = HX(25), cGnd = HX(26), cVin = HX(27);
+        // Lanes above the TCS header (rows 10-13): SDA lowest, then SCL, GND, VIN, so each lane ends before the next
+        // one turns down onto its pin.
+        double lSda = HY(10), lScl = HY(11), lGnd = HY(12), lVin = HY(13);
+        // Risers just right of the ESP32's right-hand column.
+        double rSda = HX(12), rScl = HX(13), rGnd = HX(14), r3v3 = HX(15);
 
-        // Loose leads from the LCD backpack pins (tips at Y 76, Z 16.75) over the board edge to the pads.
-        // Pin X (backpack order SCL, SDA, VCC, GND): 48.52, 51.06, 53.60, 56.14. Each lead's run has its own height.
-        double zp = 16.75, yd = 77.0;   // clears the lid's locating lip (inner edge Y 78.1)
+        // ESP32 to TCS3448, all on layer 1 except SCL, which hops over the SDA lane on layer 2.
+        Add(doc, Tube(new[] { V(ex,eSda,L1), V(rSda,eSda,L1), V(rSda,lSda,L1), V(cSda,lSda,L1), V(cSda,tRow,L1) }), "SDA (D21 to TCS)", ORANGE, log);
+        Add(doc, Tube(new[] { V(ex,eScl,L1), V(rScl,eScl,L1), V(rScl,eScl,L2), V(rScl,lScl,L2), V(cScl,lScl,L2), V(cScl,tRow,L2), V(cScl,tRow,L1) }), "SCL (D22 to TCS)", YELLOW, log);
+        Add(doc, Tube(new[] { V(ex,eGnd,L1), V(rGnd,eGnd,L1), V(rGnd,lGnd,L1), V(cGnd,lGnd,L1), V(cGnd,tRow,L1) }), "GND (ESP32 to TCS)", BLACK, log);
+        Add(doc, Tube(new[] { V(ex,e3v3,L1), V(r3v3,e3v3,L1), V(r3v3,lVin,L1), V(cVin,lVin,L1), V(cVin,tRow,L1) }), "3V3 (ESP32 to TCS VIN)", RED, log);
+
+        // TCS3448 to AS7343: four straight bridges down the columns (same pin order on both headers).
+        Add(doc, Tube(new[] { V(cVin,tRow,L1), V(cVin,aRow,L1) }), "3V3 (TCS to AS bridge)", RED, log);
+        Add(doc, Tube(new[] { V(cGnd,tRow,L1), V(cGnd,aRow,L1) }), "GND (TCS to AS bridge)", BLACK, log);
+        Add(doc, Tube(new[] { V(cScl,tRow,L1), V(cScl,aRow,L1) }), "SCL (TCS to AS bridge)", YELLOW, log);
+        Add(doc, Tube(new[] { V(cSda,tRow,L1), V(cSda,aRow,L1) }), "SDA (TCS to AS bridge)", ORANGE, log);
+
+        // LCD pads (row 23) onto the bus lanes, and 5V from ESP32 VIN along the top margin.
+        double pRow = HY(23), pScl = HX(16), pSda = HX(17), p5v = HX(18), pGnd = HX(19);
+        // Each link drops onto its own lane, hopping over the lanes it crosses (VIN, GND on layer 1; SCL on layer 2).
+        Add(doc, Tube(new[] { V(pSda,pRow,L1), V(pSda,pRow,L3), V(pSda,lSda,L3), V(pSda,lSda,L1) }), "SDA (LCD pad link)", ORANGE, log);
+        Add(doc, Tube(new[] { V(pScl,pRow,L1), V(pScl,pRow,L2), V(pScl,lScl,L2) }), "SCL (LCD pad link)", YELLOW, log);
+        Add(doc, Tube(new[] { V(pGnd,pRow,L1), V(pGnd,pRow,L2), V(pGnd,lGnd,L2), V(pGnd,lGnd,L1) }), "GND (LCD pad link)", BLACK, log);
+        double margin = pRow + 2.54;
+        Add(doc, Tube(new[] { V(p5v,pRow,L1), V(p5v,margin,L1), V(vin,margin,L1), V(vin,e3v3,L1) }), "5V (VIN to LCD pad)", WHITE, log);
+
+        // Loose leads from the LCD backpack pins (tips at Y 76, Z 16.75; order SCL, SDA, VCC, GND) over the board
+        // edge to the pads, crossing the 5V margin wire on layer 2.
+        double zp = 16.75, yd = 77.0;
         var leads = new[] {
-            new { Name = "LCD lead SCL", Px = 48.52, Pad = 74.21, Z = 9.0,  Look = YELLOW },
-            new { Name = "LCD lead SDA", Px = 51.06, Pad = 76.75, Z = 11.0, Look = BLUE },
-            new { Name = "LCD lead 5V",  Px = 53.60, Pad = 79.29, Z = 13.0, Look = ORANGE },
-            new { Name = "LCD lead GND", Px = 56.14, Pad = 81.83, Z = 15.0, Look = BLACK } };
+            new { Name = "LCD lead SCL", Px = 48.52, Pad = pScl, Look = YELLOW },
+            new { Name = "LCD lead SDA", Px = 51.06, Pad = pSda, Look = ORANGE },
+            new { Name = "LCD lead 5V",  Px = 53.60, Pad = p5v,  Look = WHITE },
+            new { Name = "LCD lead GND", Px = 56.14, Pad = pGnd, Look = BLACK } };
         foreach (var l in leads)
-            Add(doc, Tube(new[] { V(l.Px,76,zp), V(l.Px,yd,zp), V(l.Px,yd,l.Z), V(l.Pad,yd,l.Z), V(l.Pad,yd,L2), V(l.Pad,64.21,L2), V(l.Pad,64.21,L1) }), l.Name, l.Look, log);
+            Add(doc, Tube(new[] { V(l.Px,76,zp), V(l.Px,yd,zp), V(l.Pad,yd,L2), V(l.Pad,pRow,L2), V(l.Pad,pRow,L1) }), l.Name, l.Look, log);
 
-        Add(doc, Blobs(new[] {
-            new[]{33.57,31.19}, new[]{33.57,38.81}, new[]{33.57,61.67}, new[]{33.57,64.21}, new[]{8.17,64.21},
-            new[]{64.05,28.65}, new[]{64.05,31.19}, new[]{64.05,33.73}, new[]{64.05,36.27},
-            new[]{74.21,64.21}, new[]{76.75,64.21}, new[]{79.29,64.21}, new[]{81.83,64.21} }), "Solder joints", METAL, log);
+        var joints = new List<double[]> {
+            new[]{ex,e3v3}, new[]{ex,eGnd}, new[]{ex,eSda}, new[]{ex,eScl}, new[]{vin,e3v3},
+            new[]{pScl,pRow}, new[]{pSda,pRow}, new[]{p5v,pRow}, new[]{pGnd,pRow} };
+        foreach (double c in new[] { cVin, cGnd, cScl, cSda }) { joints.Add(new[] { c, tRow }); joints.Add(new[] { c, aRow }); }
+        Add(doc, Blobs(joints), "Solder joints", METAL, log);
 
-        doc.PropertySets["Design Tracking Properties"]["Description"].Value = "Point-to-point wiring: I2C (D21 SDA, D22 SCL) to TCS3448 and LCD, 3V3, 5V, GND";
+        doc.PropertySets["Design Tracking Properties"]["Description"].Value = "Point-to-point wiring: I2C (D21 SDA, D22 SCL) to TCS3448, AS7343 and LCD; 3V3, 5V, GND";
         doc.SaveAs(path, false);
         var rb = doc.ComponentDefinition.RangeBox;
         log.Add(string.Format("range x {0:F2}..{1:F2} y {2:F2}..{3:F2} z {4:F2}..{5:F2}", rb.MinPoint.X*10, rb.MaxPoint.X*10, rb.MinPoint.Y*10, rb.MaxPoint.Y*10, rb.MinPoint.Z*10, rb.MaxPoint.Z*10));
@@ -121,7 +145,9 @@ public static class Wiring
     static string Net(string name)
     {
         if (name.StartsWith("LCD lead ")) name = name.Substring(9);
-        return name.StartsWith("Solder") ? null : name.Split(' ')[0];
+        if (name.StartsWith("Solder")) return null;
+        string n = name.Split(' ')[0];
+        return n == "5V" ? "5V" : n;
     }
 
     // Overlap between wires of different nets (insulation would collide).
