@@ -16,11 +16,12 @@ public static class Electronics
     // ESP32 (matches the real board): pins in columns 1 and 11, nearest-USB pin pair in row 21
     // (rows 22-23 free above it), USB toward +Y.
     const int EspColLeft = 1, EspRowUsbPin = 21;
-    // TCS3448 header along a row (board turned 90 deg, extending toward -Y from its header), pins in columns 22-27.
-    // AS7343 the same way round, 7 rows further toward -Y: the boards' edges touch and the sensors are 17.78 mm
-    // apart, the closest they can get. The LFA lines are 10 mm apart, so each sits 3.89 mm inward of its sensor and
-    // the optical module's slit windows aim each sensor at its line.
-    const int SensorCol0 = 22, TcsHeaderRow = 14, AsHeaderRow = 7;
+    // Both breakouts turned so each board extends toward +Y from its header, putting each onboard LED on the +Y side
+    // of its sensor. For the TCS3448 that is the side away from the LFA lines, so the pouch film's mirror reflection
+    // of the LED bounces away from the sensor (about 45 deg lighting). Headers along rows, pins in columns 22-27
+    // (INT col 22 ... VIN col 27). The boards' edges touch (both at Y 26.11) and the sensors are 17.78 mm apart,
+    // the closest they can get; the LFA lines are 10 mm apart, so each sits 3.89 mm inward of its sensor.
+    const int SensorCol0 = 22, TcsHeaderRow = 9, AsHeaderRow = 2;
     const double SpacerZ = -2.5;    // breakout back face, below the header's plastic spacer
     // Perf board corner mounting holes (approximate, from the photo of the real board).
     const double MountHoleD = 2.0, MountHoleInset = 2.5;
@@ -92,9 +93,9 @@ public static class Electronics
         Place(esp, Mat(espTx, espTy, SpacerZ, new double[] { 0, -1, 0 }, new double[] { -1, 0, 0 }, new double[] { 0, 0, -1 }));
 
         // Breakouts: local header row at y = 2.54 with pins at x = 6.35 .. 19.05 (pin 1 = VIN at x = 6.35).
-        // Turned so local x -> +X, local y -> -Y (board extends toward -Y from its header), local z -> -Z.
-        Func<int, Matrix> sensorMat = row => Mat(HX(SensorCol0) - 6.35, HY(row) + 2.54, SpacerZ,
-                                                 new double[] { 1, 0, 0 }, new double[] { 0, -1, 0 }, new double[] { 0, 0, -1 });
+        // Turned so local x -> -X (VIN at column 27), local y -> +Y (board extends toward +Y), local z -> -Z.
+        Func<int, Matrix> sensorMat = row => Mat(HX(SensorCol0 + 5) + 6.35, HY(row) - 2.54, SpacerZ,
+                                                 new double[] { -1, 0, 0 }, new double[] { 0, 1, 0 }, new double[] { 0, 0, -1 });
         Place(tcs, sensorMat(TcsHeaderRow));
         Place(tcsHdr, sensorMat(TcsHeaderRow));
         // The AS7343 breakout (Adafruit 6477) has the same outline, holes, sensor position and header pinout as the
@@ -107,9 +108,10 @@ public static class Electronics
 
         asm.Update(); asm.Save();
         foreach (ComponentOccurrence o in occs) log.Add(Box(o));
-        double sx = HX(SensorCol0) - 6.35 + 12.7;
-        log.Add(string.Format("TCS3448 sensor centre ({0:F2}, {1:F2}); AS7343 sensor centre ({0:F2}, {2:F2}); face Z {3:F2}",
-            sx, HY(TcsHeaderRow) + 2.54 - 8.509, HY(AsHeaderRow) + 2.54 - 8.509, SpacerZ - 2.25));
+        double sx = HX(SensorCol0 + 5) + 6.35 - 12.7;
+        log.Add(string.Format("TCS3448 sensor centre ({0:F2}, {1:F2}), LED Y {2:F2}; AS7343 sensor centre ({0:F2}, {3:F2}), LED Y {4:F2}; face Z {5:F2}",
+            sx, HY(TcsHeaderRow) - 2.54 + 8.509, HY(TcsHeaderRow) - 2.54 + 15.875,
+            HY(AsHeaderRow) - 2.54 + 8.509, HY(AsHeaderRow) - 2.54 + 15.875, SpacerZ - 2.25));
         return string.Join("\n", log);
     }
 }

@@ -5,8 +5,8 @@
 // Perf grid: HoleX(i) = 8.17 + 2.54 i, HoleY(j) = 5.79 + 2.54 j. Holes are written (column, row).
 //   ESP32 right column, col 11 (X 36.11): 3V3 row 21, GND row 20, D4 row 17, D21 row 11, D22 row 8.
 //   ESP32 left column, col 1 (X 10.71): VIN row 21, GND row 20.
-//   TCS3448 header, row 14 (Y 41.35), and AS7343 header, row 7 (Y 23.57), both cols 22-27:
-//     VIN col 22, GND col 23, SCL col 24, SDA col 25, GPIO col 26, INT col 27.
+//   TCS3448 header, row 9 (Y 28.65), and AS7343 header, row 2 (Y 10.87), both cols 22-27:
+//     INT col 22, GPIO col 23, SDA col 24, SCL col 25, GND col 26, VIN col 27.
 //   LCD pads, row 23 (Y 64.21): SCL col 16, SDA col 17, 5V col 18, GND col 19.
 // Colours follow the real board: SDA orange, SCL yellow, 3V3 red, GND black; 5V white.
 // Wires that cross run on raised layers (L2, L3) so insulated wires stack instead of colliding.
@@ -88,18 +88,19 @@ public static class Wiring
 
         double ex = HX(11), vin = HX(1);
         double e3v3 = HY(21), eGnd = HY(20), eSda = HY(11), eScl = HY(8);
-        double tRow = HY(14), aRow = HY(7);
-        double cVin = HX(22), cGnd = HX(23), cScl = HX(24), cSda = HX(25);
-        // Lanes above the TCS header (rows 15-18): VIN lowest, then GND, SCL, SDA, so each turns down onto its pin.
-        double lVin = HY(15), lGnd = HY(16), lScl = HY(17), lSda = HY(18);
+        double tRow = HY(9), aRow = HY(2);
+        double cSda = HX(24), cScl = HX(25), cGnd = HX(26), cVin = HX(27);
+        // Lanes above the TCS header (rows 10-13): SDA lowest, then SCL, GND, VIN, so each lane ends before the next
+        // one turns down onto its pin.
+        double lSda = HY(10), lScl = HY(11), lGnd = HY(12), lVin = HY(13);
         // Risers just right of the ESP32's right-hand column.
-        double rSda = HX(12), rScl = HX(13), r3v3 = HX(14), rGnd = HX(15);
+        double rSda = HX(12), rScl = HX(13), rGnd = HX(14), r3v3 = HX(15);
 
-        // ESP32 to TCS3448. SDA and SCL come up from below on layer 1; 3V3 and GND come down from above on layers 2 and 3.
+        // ESP32 to TCS3448, all on layer 1 except SCL, which hops over the SDA lane on layer 2.
         Add(doc, Tube(new[] { V(ex,eSda,L1), V(rSda,eSda,L1), V(rSda,lSda,L1), V(cSda,lSda,L1), V(cSda,tRow,L1) }), "SDA (D21 to TCS)", ORANGE, log);
-        Add(doc, Tube(new[] { V(ex,eScl,L1), V(rScl,eScl,L1), V(rScl,lScl,L1), V(cScl,lScl,L1), V(cScl,tRow,L1) }), "SCL (D22 to TCS)", YELLOW, log);
-        Add(doc, Tube(new[] { V(ex,e3v3,L1), V(ex,e3v3,L2), V(r3v3,e3v3,L2), V(r3v3,lVin,L2), V(cVin,lVin,L2), V(cVin,tRow,L2), V(cVin,tRow,L1) }), "3V3 (ESP32 to TCS VIN)", RED, log);
-        Add(doc, Tube(new[] { V(ex,eGnd,L1), V(ex,eGnd,L3), V(rGnd,eGnd,L3), V(rGnd,lGnd,L3), V(cGnd,lGnd,L3), V(cGnd,tRow,L3), V(cGnd,tRow,L1) }), "GND (ESP32 to TCS)", BLACK, log);
+        Add(doc, Tube(new[] { V(ex,eScl,L1), V(rScl,eScl,L1), V(rScl,eScl,L2), V(rScl,lScl,L2), V(cScl,lScl,L2), V(cScl,tRow,L2), V(cScl,tRow,L1) }), "SCL (D22 to TCS)", YELLOW, log);
+        Add(doc, Tube(new[] { V(ex,eGnd,L1), V(rGnd,eGnd,L1), V(rGnd,lGnd,L1), V(cGnd,lGnd,L1), V(cGnd,tRow,L1) }), "GND (ESP32 to TCS)", BLACK, log);
+        Add(doc, Tube(new[] { V(ex,e3v3,L1), V(r3v3,e3v3,L1), V(r3v3,lVin,L1), V(cVin,lVin,L1), V(cVin,tRow,L1) }), "3V3 (ESP32 to TCS VIN)", RED, log);
 
         // TCS3448 to AS7343: four straight bridges down the columns (same pin order on both headers).
         Add(doc, Tube(new[] { V(cVin,tRow,L1), V(cVin,aRow,L1) }), "3V3 (TCS to AS bridge)", RED, log);
@@ -109,9 +110,10 @@ public static class Wiring
 
         // LCD pads (row 23) onto the bus lanes, and 5V from ESP32 VIN along the top margin.
         double pRow = HY(23), pScl = HX(16), pSda = HX(17), p5v = HX(18), pGnd = HX(19);
-        Add(doc, Tube(new[] { V(pSda,pRow,L1), V(pSda,lSda,L1) }), "SDA (LCD pad link)", ORANGE, log);
-        Add(doc, Tube(new[] { V(pScl,pRow,L1), V(pScl,pRow,L2), V(pScl,lScl,L2), V(pScl,lScl,L1) }), "SCL (LCD pad link)", YELLOW, log);
-        Add(doc, Tube(new[] { V(pGnd,pRow,L1), V(pGnd,pRow,L3), V(pGnd,lGnd,L3) }), "GND (LCD pad link)", BLACK, log);
+        // Each link drops onto its own lane, hopping over the lanes it crosses (VIN, GND on layer 1; SCL on layer 2).
+        Add(doc, Tube(new[] { V(pSda,pRow,L1), V(pSda,pRow,L3), V(pSda,lSda,L3), V(pSda,lSda,L1) }), "SDA (LCD pad link)", ORANGE, log);
+        Add(doc, Tube(new[] { V(pScl,pRow,L1), V(pScl,pRow,L2), V(pScl,lScl,L2) }), "SCL (LCD pad link)", YELLOW, log);
+        Add(doc, Tube(new[] { V(pGnd,pRow,L1), V(pGnd,pRow,L2), V(pGnd,lGnd,L2), V(pGnd,lGnd,L1) }), "GND (LCD pad link)", BLACK, log);
         double margin = pRow + 2.54;
         Add(doc, Tube(new[] { V(p5v,pRow,L1), V(p5v,margin,L1), V(vin,margin,L1), V(vin,e3v3,L1) }), "5V (VIN to LCD pad)", WHITE, log);
 

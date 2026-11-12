@@ -8,7 +8,9 @@ using Inventor;
 
 public static class PouchSlide
 {
-    const double TipX = 81.47, SensorY = 35.0, SlotFloorZ = -29.75;   // must match Enclosure.cs
+    // Fully inserted placement, read from the pouch's placement in the freshly generated assembly (Enclosure.cs puts
+    // its tip at TipX, centred on SensorY, back face on the tunnel floor at SlotFloorZ, body toward -X).
+    static double TipX, SensorY, SlotFloorZ;
 
     static ComponentOccurrence Find(AssemblyDocument asm, string prefix)
     {
@@ -60,6 +62,9 @@ public static class PouchSlide
         var pouch = Find(asm, "MobileDetect Pouch");
         if (pouch == null) throw new Exception("No pouch occurrence in the active assembly");
         var pd = (PartComponentDefinition)pouch.Definition;
+        if (!pouch.Grounded) throw new Exception("Run this on a freshly generated Enclosure Assembly (pouch still grounded in place)");
+        var t0 = pouch.Transformation;
+        TipX = t0.Cell[1, 4] * 10; SensorY = t0.Cell[2, 4] * 10; SlotFloorZ = t0.Cell[3, 4] * 10;
         // Remove anything a previous run left behind.
         foreach (AssemblyConstraint c in new List<AssemblyConstraint>(acd.Constraints.Cast<AssemblyConstraint>()))
             if (c.Name.StartsWith("Pouch ")) c.Delete();
@@ -80,6 +85,7 @@ public static class PouchSlide
             wp.Name = name; wp.Visible = false; wp.Grounded = true;   // else the solver moves the plane, not the pouch
             return wp;
         };
+        log.Add(string.Format("Fully inserted: tip X {0:F2}, centreline Y {1:F2}, floor Z {2:F2}", TipX, SensorY, SlotFloorZ));
         var floor = fixedPlane(0, 0, SlotFloorZ, new double[] { 1, 0, 0 }, new double[] { 0, 1, 0 }, "Tunnel floor");          // normal +Z
         var centre = fixedPlane(0, SensorY, 0, new double[] { 0, 0, 1 }, new double[] { 1, 0, 0 }, "Tunnel centreline");    // normal +Y
         var stop = fixedPlane(TipX, 0, 0, new double[] { 0, 0, 1 }, new double[] { 0, 1, 0 }, "Pouch stop");                // normal -X
@@ -101,7 +107,7 @@ public static class PouchSlide
         // Sweep the travel and report any collision between the pouch and the base or optical module.
         var others = app.TransientObjects.CreateObjectCollection();
         foreach (ComponentOccurrence o in acd.Occurrences)
-            if (o.Name.StartsWith("Enclosure Base") || o.Name.StartsWith("Optical Module")) others.Add(o);
+            if (o.Name.StartsWith("Enclosure Base") || o.Name.StartsWith("Optical Module") || o.Name.StartsWith("Test Sled")) others.Add(o);
         var one = app.TransientObjects.CreateObjectCollection(); one.Add(pouch);
         foreach (double mm in new double[] { 0, 5, 10, 20, 30, 45, 60, 75, 90, 100 })
         {
