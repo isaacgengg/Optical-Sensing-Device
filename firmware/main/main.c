@@ -36,6 +36,38 @@ static const char *TAG = "main";
 static measurement_deps_t s_deps;
 static command_source_t *s_input;
 
+#if CONFIG_DC_SENSOR_LEDS
+// One illuminator for the use case: the GPIO LED plus each sensor board's
+// onboard white LED. Every LED is set even if one fails, so "off" always
+// reaches all of them; the first error is returned.
+static illuminator_t *s_gpio_light;
+
+static esp_err_t all_lights_init(void *ctx)
+{
+    (void)ctx;
+    return s_gpio_light->init(s_gpio_light->ctx);
+}
+
+static esp_err_t all_lights_set(void *ctx, bool on, uint8_t intensity_pct)
+{
+    (void)ctx;
+    on = on && intensity_pct > 0;
+    uint16_t ma = (uint16_t)(CONFIG_DC_SENSOR_LED_MA * intensity_pct / 100);
+    esp_err_t err = s_gpio_light->set(s_gpio_light->ctx, on, intensity_pct);
+    esp_err_t e = tcs3448_set_led(on, ma);
+    if (err == ESP_OK) err = e;
+#if CONFIG_DC_LFA_AS7343
+    if (s_deps.control_init_error == ESP_OK) {  // a missing AS7343 must not block colorimetric
+        e = as7343_set_led(on, ma);
+        if (err == ESP_OK) err = e;
+    }
+#endif
+    return err;
+}
+
+static illuminator_t s_all_lights = {.init = all_lights_init, .set = all_lights_set};
+#endif
+
 // TODO(team): placeholder measurement parameters, one set per test mode.
 // Tune once the optics exist.
 static const measurement_config_t s_cfg[] = {
@@ -104,6 +136,11 @@ void app_main(void)
 #if CONFIG_DC_LFA_AS7343
     s_deps.control_sensor = as7343_create(bus, BOARD_AS7343_I2C_ADDR, s_deps.time);
     ESP_LOGI(TAG, "second/control=AS7343@0x39");
+#endif
+#if CONFIG_DC_SENSOR_LEDS
+    s_gpio_light = s_deps.light;
+    s_deps.light = &s_all_lights;
+    ESP_LOGI(TAG, "light=GPIO%d + sensor onboard LEDs @ %d mA", BOARD_LED_GPIO, CONFIG_DC_SENSOR_LED_MA);
 #endif
 #else
     static mock_sensor_storage_t primary_mock, control_mock;

@@ -16,6 +16,7 @@ static const char *TAG = "as7343";
 #define REG_CFG1     0xC6
 #define REG_ASTEP_L  0xD4
 #define REG_CFG20    0xD6
+#define REG_LED      0xCD  // LED_ACT bit 7, LED_DRIVE bits 6:0
 
 #define ID_VALUE           0x81
 #define ENABLE_PON         0x01
@@ -26,6 +27,9 @@ static const char *TAG = "as7343";
 #define CFG1_AGAIN_MASK    0x1F
 #define CFG20_AUTO_SMUX_MASK 0x60
 #define CFG20_AUTO_SMUX_18 0x60  // auto_smux = 3: 18 channels over 3 cycles
+#define LED_ACT            0x80
+#define LED_MIN_MA         4    // LED_DRIVE: I = 4 mA + 2 mA * code
+#define LED_MAX_MA         258
 
 // TODO(team): gain 9 = 256x (datasheet default; 0 = 0.5x ... 12 = 2048x).
 // Tune once the LED and optics exist; lower it if reads report saturation.
@@ -126,6 +130,9 @@ static esp_err_t as7343_init(void *ctx)
     }
     if (err == ESP_OK) {
         err = update_bits(s->dev, REG_CFG1, CFG1_AGAIN_MASK, DEFAULT_AGAIN);
+    }
+    if (err == ESP_OK) {
+        err = i2c_bus_write_reg(s->dev, REG_LED, 0);  // onboard LED off until asked
     }
     s->integration_ms = 0;
     s->gain_code = DEFAULT_AGAIN;
@@ -241,6 +248,15 @@ static esp_err_t as7343_read(void *ctx, channel_reading_t *out)
     }
     out->count = AS7343_CHANNEL_COUNT;
     return ESP_OK;
+}
+
+esp_err_t as7343_set_led(bool on, uint16_t ma)
+{
+    if (s_ctx.dev == NULL) return ESP_ERR_INVALID_STATE;  // init() first
+    if (ma < LED_MIN_MA) ma = LED_MIN_MA;
+    if (ma > LED_MAX_MA) ma = LED_MAX_MA;
+    uint8_t code = (uint8_t)((ma - LED_MIN_MA) / 2);
+    return i2c_bus_write_reg(s_ctx.dev, REG_LED, (uint8_t)((on ? LED_ACT : 0) | code));
 }
 
 optical_sensor_t *as7343_create(i2c_bus_handle_t *bus, uint8_t address, timebase_t *time)

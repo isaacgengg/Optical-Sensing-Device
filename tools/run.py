@@ -9,6 +9,8 @@
     python3 tools/run.py test           host tests and layer check
 
 Builds: mock, tcs3448, dual, ble, tcs3448-ble, dual-ble. On Windows use `py` instead of `python3`.
+Add --sensor-leds to a tcs3448 or dual build to also light the sensor boards' white LEDs,
+and --sensor-led-ma N (4-258, default 20) to set their brightness.
 
 Builds run in Docker (espressif/idf), so no ESP-IDF install is needed. Flashing
 and the monitor run on this computer with esptool, because Docker Desktop on
@@ -63,12 +65,20 @@ def docker(mount, workdir, args, tty=False):
     run(cmd)
 
 
-def idf_args(build):
-    # Own build dir and sdkconfig per build, so switching never needs a clean.
-    args = ["idf.py", "-B", f"build-{build}", "-D", f"SDKCONFIG=build-{build}/sdkconfig"]
-    if BUILDS[build]:
-        args += ["-D", "SDKCONFIG_DEFAULTS=" + ";".join(["sdkconfig.defaults", *BUILDS[build]])]
+def idf_args(build, extra=()):
+    # Own build dir and sdkconfig per build (and per flag set), so switching never needs a clean.
+    name = build_name(build, extra)
+    layers = [*BUILDS[build], *extra]
+    if "sdkconfig.sensor_leds" in extra:
+        layers.append(f"build-{name}/sdkconfig.led_ma")  # written by set_led_ma()
+    args = ["idf.py", "-B", f"build-{name}", "-D", f"SDKCONFIG=build-{name}/sdkconfig"]
+    if layers:
+        args += ["-D", "SDKCONFIG_DEFAULTS=" + ";".join(["sdkconfig.defaults", *layers])]
     return args
+
+
+def build_name(build, extra=()):
+    return build + ("-leds" if "sdkconfig.sensor_leds" in extra else "")
 
 
 def venv_python():
@@ -79,6 +89,21 @@ def venv_python():
         run([sys.executable, "-m", "venv", str(VENV)])
         run([str(py), "-m", "pip", "install", "--quiet", "esptool"])
     return str(py)
+
+
+def set_led_ma(name, ma):
+    """Apply --sensor-led-ma, or the default when it's left off.
+
+    A build's saved sdkconfig wins over the defaults files, so drop the saved
+    line every time; the value then comes from this file, or the Kconfig default.
+    """
+    build_dir = FIRMWARE / f"build-{name}"
+    build_dir.mkdir(exist_ok=True)
+    saved = build_dir / "sdkconfig"
+    if saved.exists():
+        lines = saved.read_text().splitlines(keepends=True)
+        saved.write_text("".join(l for l in lines if not l.startswith("CONFIG_DC_SENSOR_LED_MA=")))
+    (build_dir / "sdkconfig.led_ma").write_text(f"CONFIG_DC_SENSOR_LED_MA={ma}\n" if ma else "")
 
 
 def flash(build, port):
@@ -95,7 +120,19 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("target", choices=[*BUILDS, "monitor", "ports", "qemu", "test"])
     p.add_argument("port", nargs="?", help="serial port, e.g. /dev/ttyUSB0, /dev/cu.usbserial-0001, COM3")
+    p.add_argument("--sensor-leds", action="store_true",
+                   help="also light the sensor boards' onboard white LEDs (tcs3448 and dual builds)")
+    p.add_argument("--sensor-led-ma", type=int, choices=range(4, 259), metavar="N",
+                   help="white LED current in mA at 100%% intensity, 4-258 (default 20); lower is dimmer")
     a = p.parse_args()
+    extra = []
+    if a.sensor_leds:
+        if "sdkconfig.tcs3448" not in BUILDS.get(a.target, []) and "sdkconfig.dual" not in BUILDS.get(a.target, []):
+            p.error("--sensor-leds needs a real-sensor build (tcs3448, tcs3448-ble, dual, dual-ble)")
+        extra.append("sdkconfig.sensor_leds")
+        set_led_ma(build_name(a.target, extra), a.sensor_led_ma)
+    elif a.sensor_led_ma is not None:
+        p.error("--sensor-led-ma needs --sensor-leds")
 
     if a.target == "ports":
         # Only USB ports; Linux also lists dozens of legacy /dev/ttyS* with no hardware.
@@ -115,12 +152,13 @@ def main():
                       " && cmake --build build/host-docker"
                       " && ctest --test-dir build/host-docker --output-on-failure"])
     else:
-        docker(FIRMWARE, "/project", [*idf_args(a.target), "build"])
+        name = build_name(a.target, extra)
+        docker(FIRMWARE, "/project", [*idf_args(a.target, extra), "build"])
         if a.port:
-            flash(a.target, a.port)
+            flash(name, a.port)
             monitor(a.port)
         else:
-            print(f"Built firmware/build-{a.target}. Add a PORT to flash it.")
+            print(f"Built firmware/build-{name}. Add a PORT to flash it.")
 
 
 if __name__ == "__main__":

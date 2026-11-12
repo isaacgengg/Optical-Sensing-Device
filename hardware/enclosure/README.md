@@ -10,6 +10,10 @@ this folder and make it active. The project's workspace is this folder (a
 relative path), so it works wherever the repo is cloned. Open
 `Enclosure Assembly.iam` for the whole device.
 
+Without Inventor, open `Enclosure Assembly.step` / `Electronics Assembly.step`
+in https://3dviewer.net or FreeCAD. Regenerate them with
+`scripts/export_step.ps1` after changing the model.
+
 ## Layout
 
 ```
