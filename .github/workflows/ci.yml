@@ -46,3 +46,12 @@ jobs:
           rm -f sdkconfig
           idf.py -B build-ble -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.ble" set-target esp32
           idf.py -B build-ble -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.ble" build
+      - name: Build (dual sensors, log and BLE sinks)
+        run: |
+          . $IDF_PATH/export.sh
+          for variant in dual dual-ble; do
+            defaults="sdkconfig.defaults;sdkconfig.dual"
+            if [ "$variant" = dual-ble ]; then defaults="$defaults;sdkconfig.ble"; fi
+            idf.py -B "build-$variant" -D "SDKCONFIG=build-$variant/sdkconfig" -D "SDKCONFIG_DEFAULTS=$defaults" set-target esp32
+            idf.py -B "build-$variant" -D "SDKCONFIG=build-$variant/sdkconfig" -D "SDKCONFIG_DEFAULTS=$defaults" build
+          done

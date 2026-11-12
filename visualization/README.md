@@ -22,7 +22,7 @@ History stays in memory and clears when the page reloads.
 ## Live results over Bluetooth
 
 1. Build and flash the BLE build: `python3 tools/run.py ble PORT`, or
-   `tcs3448-ble` for real sensor readings (see [docs/setup.md](../docs/setup.md)).
+   `dual-ble` for two-zone LFA (or `tcs3448-ble` for TCS-only colorimetric) (see [docs/setup.md](../docs/setup.md)).
 2. Click **Connect device**, pick **DetectaChem-T2**, and pair.
 3. Trigger measurements with `l` or `c` in the serial monitor. Each result is
    added to the history marked **Device**.
@@ -40,7 +40,7 @@ error, remove the device from your computer's Bluetooth settings and pair again.
 - Lateral-flow scores show the T-line and C-line signals. Colorimetric results
   show the score and **N/A** for C line.
 
-All data is illustrative. Scores are placeholder metrics, not confidence,
+Demo data is illustrative. Dual-sensor firmware sends normalized line contrast; older v1 firmware sent raw means. Missing calibration sends INVALID and zero scores, not a measured absence of lines. Scores are not confidence,
 concentration, or validated classification thresholds. The page does not
 perform strip analysis or communicate with MobileDetect.
 

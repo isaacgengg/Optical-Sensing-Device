@@ -1,4 +1,5 @@
 #include "unity.h"
+#include <math.h>
 #include "strip_analysis.h"
 
 static channel_reading_t uniform(float v, size_t count)
@@ -123,72 +124,85 @@ static void test_color_bad_config_is_invalid(void)
 }
 
 // --- lateral flow ---
-
-static const strip_config_t LFA = {.t_threshold = 100.0f, .c_threshold = 50.0f};
-
-static strip_verdict_t lfa(float t, float c, lfa_format_t format)
+static const lfa_zone_ref_t T_REF = {
+    .dark = {.values = {10, 20}, .count = 2},
+    .blank = {.values = {110, 220}, .count = 2},
+    .channel_mask = 3, .threshold = 0.5f,
+};
+static const lfa_zone_ref_t C_REF = {
+    .dark = {.values = {100, 200}, .count = 2},
+    .blank = {.values = {1100, 2200}, .count = 2},
+    .channel_mask = 3, .threshold = 0.25f,
+};
+static strip_result_t lfa(float t, float c, lfa_format_t format)
 {
-    channel_reading_t ts[1] = {uniform(t, 4)};
-    channel_reading_t cs[1] = {uniform(c, 4)};
-    strip_config_t cfg = LFA;
-    cfg.lfa_format = format;
-    return strip_analyze_lateral_flow(ts, cs, 1, &cfg).verdict;
+    channel_reading_t ts[] = {{.values = {10 + 100*(1-t), 20 + 200*(1-t)}, .count = 2}};
+    channel_reading_t cs[] = {{.values = {100 + 1000*(1-c), 200 + 2000*(1-c)}, .count = 2}};
+    strip_config_t cfg = {.mode = STRIP_MODE_LATERAL_FLOW, .test_ref = &T_REF,
+                         .control_ref = &C_REF, .lfa_format = format};
+    return strip_analyze_lateral_flow(ts, cs, 1, &cfg);
 }
-
-static void test_lfa_no_control_line_is_invalid(void)
+static void test_lfa_independent_normalization_and_rules(void)
 {
-    TEST_ASSERT_EQUAL(STRIP_INVALID, lfa(500, 49.9f, LFA_STANDARD));
-    TEST_ASSERT_EQUAL(STRIP_INVALID, lfa(0, 49.9f, LFA_STANDARD));
-    TEST_ASSERT_EQUAL(STRIP_INVALID, lfa(500, 49.9f, LFA_COMPETITIVE));
-    TEST_ASSERT_EQUAL(STRIP_INVALID, lfa(0, 49.9f, LFA_COMPETITIVE));
+    strip_result_t r = lfa(0.5f, 0.25f, LFA_COMPETITIVE);
+    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, r.verdict);
+    TEST_ASSERT_TRUE(r.lfa_calibration_valid);
+    TEST_ASSERT_EQUAL_FLOAT(0.5f, r.score);
+    TEST_ASSERT_EQUAL_FLOAT(0.25f, r.control_score);
+    TEST_ASSERT_EQUAL_FLOAT(850, r.control_raw.values[0]);
+    TEST_ASSERT_EQUAL(STRIP_POSITIVE, lfa(0.49f, 0.3f, LFA_COMPETITIVE).verdict);
+    TEST_ASSERT_EQUAL(STRIP_POSITIVE, lfa(0.5f, 0.3f, LFA_STANDARD).verdict);
+    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, lfa(0.49f, 0.3f, LFA_STANDARD).verdict);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, lfa(0.8f, 0.24f, LFA_COMPETITIVE).verdict);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, lfa(0, 0.24f, LFA_STANDARD).verdict);
 }
-
-static void test_lfa_standard_t_line_means_positive(void)
+static void test_lfa_invalid_calibration_and_samples(void)
 {
-    TEST_ASSERT_EQUAL(STRIP_POSITIVE, lfa(100, 50, LFA_STANDARD));  // both exactly at threshold
-    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, lfa(99.9f, 50, LFA_STANDARD));
-}
-
-static void test_lfa_competitive_t_line_means_negative(void)
-{
-    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, lfa(100, 50, LFA_COMPETITIVE));
-    TEST_ASSERT_EQUAL(STRIP_POSITIVE, lfa(99.9f, 50, LFA_COMPETITIVE));
-}
-
-static void test_lfa_scores_and_mode(void)
-{
-    channel_reading_t ts[2] = {uniform(100, 4), uniform(300, 4)};
-    channel_reading_t cs[2] = {uniform(60, 4), uniform(80, 4)};
-    strip_result_t r = strip_analyze_lateral_flow(ts, cs, 2, &LFA);
-    TEST_ASSERT_EQUAL(STRIP_MODE_LATERAL_FLOW, r.mode);
-    TEST_ASSERT_EQUAL_FLOAT(200.0f, r.score);
-    TEST_ASSERT_EQUAL_FLOAT(70.0f, r.control_score);
-    TEST_ASSERT_EQUAL_size_t(2, r.sample_count);
-}
-
-static void test_lfa_bad_input_is_invalid(void)
-{
-    channel_reading_t s[1] = {uniform(500, 4)};
-    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze_lateral_flow(s, s, 0, &LFA).verdict);
-    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze_lateral_flow(NULL, s, 1, &LFA).verdict);
-    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze_lateral_flow(s, NULL, 1, &LFA).verdict);
+    channel_reading_t s[] = {{.values = {60, 120}, .count = 2}};
+    lfa_zone_ref_t ref = T_REF;
+    strip_config_t cfg = {.test_ref = &ref, .control_ref = &T_REF};
+    cfg.test_ref = NULL;
+    strip_result_t r = strip_analyze_lateral_flow(s, s, 1, &cfg);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, r.verdict);
+    TEST_ASSERT_FALSE(r.lfa_calibration_valid);
+    TEST_ASSERT_EQUAL_size_t(2, r.raw.count); // raw data still available for calibration
+    cfg.test_ref = &ref;
+    ref.blank.values[0] = ref.dark.values[0];
+    TEST_ASSERT_FALSE(strip_analyze_lateral_flow(s, s, 1, &cfg).lfa_calibration_valid);
+    ref = T_REF; ref.channel_mask = 1u << 13; // never use flicker in line contrast
+    TEST_ASSERT_FALSE(strip_analyze_lateral_flow(s, s, 1, &cfg).lfa_calibration_valid);
+    ref = T_REF; ref.threshold = NAN;
+    TEST_ASSERT_FALSE(strip_analyze_lateral_flow(s, s, 1, &cfg).lfa_calibration_valid);
+    ref = T_REF; ref.dark.count = 3;
+    TEST_ASSERT_FALSE(strip_analyze_lateral_flow(s, s, 1, &cfg).lfa_calibration_valid);
+    ref = T_REF; s[0].values[0] = 0; // below dark reference
+    TEST_ASSERT_FALSE(strip_analyze_lateral_flow(s, s, 1, &cfg).lfa_calibration_valid);
+    s[0].values[0] = NAN;
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze_lateral_flow(s, s, 1, &cfg).verdict);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze_lateral_flow(NULL, s, 1, &cfg).verdict);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze_lateral_flow(s, NULL, 1, &cfg).verdict);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze_lateral_flow(s, s, 0, &cfg).verdict);
     TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze_lateral_flow(s, s, 1, NULL).verdict);
 }
-
+static void test_average_rejects_inconsistent_channel_counts(void)
+{
+    channel_reading_t s[] = {{.count = 2}, {.count = 1}};
+    TEST_ASSERT_EQUAL_size_t(0, strip_average(s, 2).count);
+    s[0].count = DC_MAX_CHANNELS + 1;
+    TEST_ASSERT_EQUAL_size_t(0, strip_average(s, 1).count);
+}
 int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_average_per_channel);
     RUN_TEST(test_average_zero_samples);
+    RUN_TEST(test_average_rejects_inconsistent_channel_counts);
     RUN_TEST(test_color_reflectance_is_raw_over_white);
     RUN_TEST(test_color_matches_nearest_reference);
     RUN_TEST(test_color_too_far_from_every_reference_is_invalid);
     RUN_TEST(test_color_distance_boundary);
     RUN_TEST(test_color_bad_config_is_invalid);
-    RUN_TEST(test_lfa_no_control_line_is_invalid);
-    RUN_TEST(test_lfa_standard_t_line_means_positive);
-    RUN_TEST(test_lfa_competitive_t_line_means_negative);
-    RUN_TEST(test_lfa_scores_and_mode);
-    RUN_TEST(test_lfa_bad_input_is_invalid);
+    RUN_TEST(test_lfa_independent_normalization_and_rules);
+    RUN_TEST(test_lfa_invalid_calibration_and_samples);
     return UNITY_END();
 }

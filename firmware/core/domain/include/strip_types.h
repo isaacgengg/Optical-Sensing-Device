@@ -2,6 +2,8 @@
 // Pure data, no dependencies. Everything else in the project builds on these.
 #pragma once
 #include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #define DC_MAX_CHANNELS 16
 
@@ -39,17 +41,28 @@ typedef struct {
     float reflectance[DC_MAX_CHANNELS];
 } color_ref_t;
 
+// Independently measured at each zone's gain, exposure, illumination and geometry.
+// Bit i selects channel i; only visible channels 0..10 may be selected.
+typedef struct {
+    channel_reading_t dark;
+    channel_reading_t blank;
+    uint16_t channel_mask;
+    float threshold;  // 0..1 contrast; larger means a darker line
+} lfa_zone_ref_t;
+
 typedef struct {
     strip_mode_t mode;
     strip_verdict_t verdict;
     // Colorimetric: RMS reflectance distance to the closest reference (lower =
-    // closer). Lateral flow: T line signal (placeholder metric).
+    // closer). Lateral flow: calibrated T contrast (0 if unavailable; verdict INVALID).
     float score;
     float control_score;  // lateral flow: C line signal. 0 otherwise
     size_t sample_count;
     const char *match;              // colorimetric: closest reference's name, NULL if none
     const char *color;              // colorimetric: closest reference's color, NULL if none
     channel_reading_t raw;          // averaged raw channels (lateral flow: T line)
+    channel_reading_t control_raw;  // LFA second/control zone
+    bool lfa_calibration_valid;
     channel_reading_t reflectance;  // colorimetric: raw / white. count 0 otherwise
 } strip_result_t;
 
@@ -60,8 +73,8 @@ typedef struct {
     const color_ref_t *refs;
     size_t ref_count;
     float max_distance;  // RMS distance; farther than this from every ref = STRIP_INVALID
-    // Lateral flow. A line counts as present when its signal is >= its threshold.
-    float t_threshold;         // TODO(team): placeholder
-    float c_threshold;         // TODO(team): placeholder. No C line = STRIP_INVALID
+    // LFA requires BOTH independent zone references; NULL means uncalibrated.
+    const lfa_zone_ref_t *test_ref;
+    const lfa_zone_ref_t *control_ref;
     lfa_format_t lfa_format;
 } strip_config_t;

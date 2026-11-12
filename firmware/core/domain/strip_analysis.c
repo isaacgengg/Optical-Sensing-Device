@@ -1,11 +1,5 @@
 // Colorimetric: reflectance against a white reference, matched to the nearest
-// known pad color. The reference curves are placeholders until measured
-// (firmware/main/color_refs.h).
-// TODO(team): PLACEHOLDER LATERAL FLOW METRIC. A line's "signal" is the mean
-// across channels (mean_signal below). A real line darkens the strip, so the
-// real metric is likely absorbance against blank membrane in the bands the line
-// absorbs (gold: ~520-540 nm). The C-then-T rules are real. Keep it pure.
-
+// known pad color (firmware/main/color_refs.h). LFA uses separate zone refs.
 #include <math.h>
 #include <stdbool.h>
 #include "strip_analysis.h"
@@ -17,9 +11,12 @@ channel_reading_t strip_average(const channel_reading_t *samples, size_t n)
         return avg;
     }
 
-    avg.count = samples[0].count > DC_MAX_CHANNELS ? DC_MAX_CHANNELS : samples[0].count;
+    avg.count = samples[0].count;
+    if (avg.count == 0 || avg.count > DC_MAX_CHANNELS) return (channel_reading_t){0};
     for (size_t i = 0; i < n; i++) {
+        if (samples[i].count != avg.count) return (channel_reading_t){0};
         for (size_t c = 0; c < avg.count; c++) {
+            if (!isfinite(samples[i].values[c])) return (channel_reading_t){0};
             avg.values[c] += samples[i].values[c];
         }
     }
@@ -29,19 +26,27 @@ channel_reading_t strip_average(const channel_reading_t *samples, size_t n)
     return avg;
 }
 
-// Mean across channels of the averaged samples. False if there are no channels.
-static bool mean_signal(const channel_reading_t *samples, size_t n, float *out)
+// Normalize each zone against its own blank membrane and dark measurement.
+static bool line_contrast(const channel_reading_t *raw, const lfa_zone_ref_t *ref,
+                          float *score)
 {
-    channel_reading_t avg = strip_average(samples, n);
-    if (avg.count == 0) {
-        return false;
+    if (ref == NULL || raw->count == 0 || raw->count > DC_MAX_CHANNELS ||
+        ref->blank.count != raw->count || ref->dark.count != raw->count ||
+        ref->channel_mask == 0 || (ref->channel_mask & ~0x07FFu) != 0 ||
+        (ref->channel_mask >> raw->count) != 0 ||
+        !isfinite(ref->threshold) || ref->threshold <= 0 || ref->threshold > 1) return false;
+    float sum = 0;
+    size_t count = 0;
+    for (size_t i = 0; i < raw->count; i++) {
+        if (!(ref->channel_mask & (1u << i))) continue;
+        float blank = ref->blank.values[i], dark = ref->dark.values[i];
+        if (!isfinite(raw->values[i]) || !isfinite(blank) || !isfinite(dark) ||
+            dark < 0 || blank <= dark || raw->values[i] < dark) return false;
+        sum += 1.0f - (raw->values[i] - dark) / (blank - dark);
+        count++;
     }
-    float sum = 0.0f;
-    for (size_t c = 0; c < avg.count; c++) {
-        sum += avg.values[c];
-    }
-    *out = sum / (float)avg.count;
-    return true;
+    *score = sum / (float)count;
+    return isfinite(*score);
 }
 
 strip_result_t strip_analyze(const channel_reading_t *samples, size_t n,
@@ -98,22 +103,27 @@ strip_result_t strip_analyze_lateral_flow(const channel_reading_t *t_samples,
                                           size_t n, const strip_config_t *cfg)
 {
     strip_result_t result = {
-        .mode = STRIP_MODE_LATERAL_FLOW, .verdict = STRIP_INVALID, .sample_count = n};
+        .mode = STRIP_MODE_LATERAL_FLOW, .verdict = STRIP_INVALID, .sample_count = n,
+        .score = 0, .control_score = 0};
     if (t_samples == NULL || c_samples == NULL || cfg == NULL || n == 0) {
         return result;
     }
     result.raw = strip_average(t_samples, n);
-    if (!mean_signal(t_samples, n, &result.score) ||
-        !mean_signal(c_samples, n, &result.control_score)) {
+    result.control_raw = strip_average(c_samples, n);
+    if (!line_contrast(&result.raw, cfg->test_ref, &result.score) ||
+        !line_contrast(&result.control_raw, cfg->control_ref, &result.control_score)) {
+        result.score = result.control_score = 0;
         return result;
     }
+
+    result.lfa_calibration_valid = true;
 
     // No C line: the sample didn't flow, so the T line means nothing.
-    if (result.control_score < cfg->c_threshold) {
+    if (result.control_score < cfg->control_ref->threshold) {
         return result;
     }
 
-    bool t_line = result.score >= cfg->t_threshold;
+    bool t_line = result.score >= cfg->test_ref->threshold;
     bool positive = cfg->lfa_format == LFA_COMPETITIVE ? !t_line : t_line;
     result.verdict = positive ? STRIP_POSITIVE : STRIP_NEGATIVE;
     return result;

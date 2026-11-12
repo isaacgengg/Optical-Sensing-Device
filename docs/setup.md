@@ -61,7 +61,9 @@ Everything the script can do:
 
 | Command | Does |
 |---|---|
-| `python3 tools/run.py tcs3448 PORT` | Build, flash and monitor with the **real TCS3448 sensor** |
+| `python3 tools/run.py dual PORT` | TCS3448 first/test + AS7343 second/control; TCS-only colorimetric |
+| `python3 tools/run.py dual-ble PORT` | Same dual-sensor routing, results over Bluetooth |
+| `python3 tools/run.py tcs3448 PORT` | TCS3448 only; LFA unavailable |
 | `python3 tools/run.py mock PORT` | Same, with the **mock sensor** (replays made-up readings, no sensor needed) |
 | `python3 tools/run.py ble PORT` | Mock sensor, results sent over **Bluetooth** to the [dashboard](../visualization/README.md) |
 | `python3 tools/run.py tcs3448-ble PORT` | Real sensor, results over Bluetooth |
@@ -74,6 +76,8 @@ Everything the script can do:
 - Each build gets its own folder (`firmware/build-tcs3448`, `firmware/build-mock`, …), so switching between them never needs a clean.
 - The first build pulls the image (~3 GB) and compiles everything, which takes several minutes (longer on Windows). Later builds only recompile what changed.
 - The script prints each command before running it, so you can see what it's doing or rerun a step by hand.
+
+See [dual-sensor LFA](dual-sensor-lfa.md) for two-zone wiring, calibration and bench checks.
 
 ### What a good TCS3448 run looks like
 

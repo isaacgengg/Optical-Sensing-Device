@@ -11,6 +11,11 @@ menu "DetectaChem firmware"
             bool "TCS3448 (ams OSRAM, I2C)"
     endchoice
 
+    config DC_LFA_AS7343
+        bool "AS7343 on second/control LFA zone (TCS3448 on first/test zone)"
+        depends on DC_SENSOR_TCS3448
+        default n
+
     choice DC_SINK
         prompt "Result output"
         default DC_SINK_LOG

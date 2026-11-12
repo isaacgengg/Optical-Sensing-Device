@@ -84,21 +84,29 @@ static void test_read_starts_a_fresh_measurement(void)
 
     channel_reading_t r;
     TEST_ASSERT_EQUAL(ESP_OK, sensor->read(sensor->ctx, &r));
-    TEST_ASSERT_EQUAL_size_t(2, bus->write_count);
-    TEST_ASSERT_EQUAL_HEX8(0x80, bus->writes[0].reg);
-    TEST_ASSERT_EQUAL_HEX8(0x03, bus->writes[0].value);  // PON | ALS_EN
-    TEST_ASSERT_EQUAL_HEX8(0x01, bus->writes[1].value);  // PON
+    TEST_ASSERT_EQUAL_HEX8(0x01, bus->writes[0].value);  // stop/power before restoring settings
+    TEST_ASSERT_EQUAL_HEX8(0x80, bus->writes[bus->write_count - 2].reg);
+    TEST_ASSERT_EQUAL_HEX8(0x03, bus->writes[bus->write_count - 2].value);
+    TEST_ASSERT_EQUAL_HEX8(0x01, bus->writes[bus->write_count - 1].value);
 }
 
 static void test_read_restores_auto_smux_after_chip_reset(void)
 {
     init_and_configure();
     bus->regs[0x90] = 0x40;
-    bus->regs[0xD6] = 0x1F;  // chip reset: auto_smux back to 0, reserved bits kept
+    bus->regs[0xD6] = 0x1F;  // chip reset
+    bus->regs[0xC6] = 0;
+    bus->regs[0x81] = 0;
+    bus->regs[0xD4] = 0;
+    bus->regs[0xD5] = 0;
 
     channel_reading_t r;
     TEST_ASSERT_EQUAL(ESP_OK, sensor->read(sensor->ctx, &r));
     TEST_ASSERT_EQUAL_HEX8(0x7F, bus->regs[0xD6]);
+    TEST_ASSERT_EQUAL_HEX8(9, bus->regs[0xC6] & 0x1F);
+    TEST_ASSERT_EQUAL_HEX8(59, bus->regs[0x81]);
+    TEST_ASSERT_EQUAL_HEX8(0x57, bus->regs[0xD4]);
+    TEST_ASSERT_EQUAL_HEX8(0x02, bus->regs[0xD5]);
 }
 
 static void test_read_reports_saturation(void)
@@ -128,9 +136,25 @@ static void test_read_before_configure_is_rejected(void)
     TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, sensor->read(sensor->ctx, &r));
 }
 
+static void test_gain_and_bus_failure(void)
+{
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, sensor->set_gain(sensor->ctx, 16));
+    init_and_configure();
+    TEST_ASSERT_EQUAL(ESP_OK, sensor->set_gain(sensor->ctx, 64));
+    TEST_ASSERT_EQUAL_HEX8(7, bus->regs[0xC6] & 0x1F);
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, sensor->set_gain(sensor->ctx, 0));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, sensor->set_gain(sensor->ctx, 3));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, sensor->set_gain(sensor->ctx, 4096));
+    bus->read_error = ESP_ERR_TIMEOUT;
+    channel_reading_t raw;
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, sensor->read(sensor->ctx, &raw));
+    TEST_ASSERT_EQUAL_HEX8(1, bus->regs[0x80]);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_gain_and_bus_failure);
     RUN_TEST(test_init_reads_id_from_bank_1_and_configures);
     RUN_TEST(test_init_rejects_wrong_id);
     RUN_TEST(test_integration_time_encoding);
