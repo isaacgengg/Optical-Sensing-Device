@@ -12,7 +12,8 @@ relative path), so it works wherever the repo is cloned. Open
 
 Without Inventor, open `Enclosure Assembly.step` / `Electronics Assembly.step`
 in https://3dviewer.net or FreeCAD. Regenerate them with
-`scripts/export_step.ps1` after changing the model.
+`scripts/export_step.ps1` after changing the model, and commit them with the
+change so they stay in step with the `.iam` files.
 
 ## Layout
 
@@ -151,9 +152,11 @@ assembly reuses the TCS3448 model for it.
 
 ### Wiring
 
-`Electronics/Wiring.ipt` models 22 AWG insulated wire on the perf board's top
-face and loose leads up to the LCD backpack. Wires that cross run on raised
-layers, so use insulated wire. Colours match the real board.
+To build it, follow **[../WIRING.md](../WIRING.md)** (pin maps, cut list,
+routes, build order, checks). `Electronics/Wiring.ipt` models 22 AWG
+insulated wire on the perf board's top face and loose leads up to the LCD
+backpack. Wires that cross run on raised layers, so use insulated wire.
+Colours match the real board.
 
 ![Wiring, top view, LCD hidden](wiring-top.png)
 
