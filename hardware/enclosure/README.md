@@ -210,6 +210,17 @@ apertures (otherwise identical). The pouch and strip slide in it exactly as in
 the enclosure (same constraints). Rebuild with `scripts/build_test_jig.ps1`
 (delete `Test Jig/` and `Optics Test Jig.iam` first).
 
+**Printing.** `exports/test-jig/` has each jig part as STEP (PrusaSlicer,
+Bambu Studio, OrcaSlicer) and STL (Cura and others), in millimetres. Regenerate
+them with `scripts/export_test_jig.ps1` after rebuilding the jig.
+
+| Part | Size (mm) | Orientation | Notes |
+|---|---|---|---|
+| `Test Sled` | 90 × 70 × 19.9 | As exported, floor plate down | No supports |
+| `Optical Module d1.2` … `d2.5` | 30.4 × 40.6 × 14.7 | As exported, underside (read chamber) down | No supports: the chamber ceiling is a short bridge and the bores are steep. The wall between a TCS3448's two bores is 0.34 mm, so use resin or a 0.25 mm nozzle at 0.1 mm layers. Matte black |
+
+Check each aperture with a drill bit or pin gauge of its size; small holes often print undersize.
+
 Cover the jig with a dark box while measuring. For each module, with the dual
 firmware build (`python3 tools/run.py dual PORT`, press `l` / `c`):
 

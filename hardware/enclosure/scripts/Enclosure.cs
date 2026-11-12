@@ -459,6 +459,8 @@ public static class Enclosure
         Rect(zb, (LowCeilZ + rim) - zb, sx0, sy0, sx1, sy1, J, "Module block");
         Rect(LowCeilZ, rim + 0.1, ModX0, ModY0, ModX1, ModY1, C, "Module pocket");
         Poly(zf, LowH, Outline(TipX, -1, PouchY, Clr, sx0 - 2, true), C, "Pouch slot");
+        // No rim over the pouch slot on the -X side: it would be a ~50 mm unsupported bridge. The other three sides locate the module.
+        Rect(LowCeilZ, rim + 0.1, sx0 - 0.1, PouchY - 25.40 - Clr, ModX0 + 0.1, PouchY + 25.40 + Clr, C, "Rim gap over slot");
         double gx0 = SensorX - StripW / 2 - GrooveClr, gx1 = SensorX + StripW / 2 + GrooveClr, gd = StripT + GrooveClr;
         Rect(zf - gd, gd, gx0, StripStopY - 0.3, gx1, 71, C, "Strip groove");
         Rects(zf, -zf, new[] { new[]{0.0, 0.0, 4.0, 4.0}, new[]{86.0, 0.0, 90.0, 4.0}, new[]{0.0, 66.0, 4.0, 70.0}, new[]{86.0, 66.0, 90.0, 70.0} }, J, "Board posts");
