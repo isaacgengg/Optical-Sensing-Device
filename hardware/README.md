@@ -17,3 +17,7 @@ order and checks.
 | Rev | Date | Fab submitted | Notes |
 |---|---|---|---|
 | | | | |
+
+Current photo-layout enclosure STEP/STL files and setup are in
+[enclosure/README.md](enclosure/README.md). Native Inventor files still need
+the documented Windows rebuild; use the new neutral exports for this prototype.

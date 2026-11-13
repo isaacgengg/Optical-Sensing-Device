@@ -28,3 +28,5 @@ fp-info-table
 # Inventor backups and local state
 OldVersions/
 *.ipj.bak
+hardware/enclosure/exports/as-built-native/
+hardware/enclosure/scripts/__pycache__/
