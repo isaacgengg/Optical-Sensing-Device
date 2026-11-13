@@ -6,11 +6,7 @@
 # Enclosure\Optical Module.ipt, Enclosure\Enclosure Lid.ipt and Enclosure Assembly.iam first (and
 # Purchased Parts\DetectaChem\MobileDetect Pouch.ipt to regenerate the pouch).
 $ErrorActionPreference = 'Stop'
-$dll = "C:\Program Files\Autodesk\Inventor 2027\Bin\Autodesk.Inventor.Interop.dll"
-Add-Type -Path $dll
-Add-Type -TypeDefinition (Get-Content (Join-Path $PSScriptRoot "Enclosure.cs") -Raw) -ReferencedAssemblies $dll
-Add-Type -TypeDefinition (Get-Content (Join-Path $PSScriptRoot "PouchSlide.cs") -Raw) -ReferencedAssemblies $dll, "System.Core"
-Add-Type -TypeDefinition (Get-Content (Join-Path $PSScriptRoot "LfaStrip.cs") -Raw) -ReferencedAssemblies $dll, "System.Core"
+. (Join-Path $PSScriptRoot "load_cad_types.ps1")
 $inv = [Runtime.InteropServices.Marshal]::GetActiveObject("Inventor.Application")
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 [Enclosure]::Build($inv, $root)

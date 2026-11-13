@@ -4,8 +4,8 @@
 //
 // Strip (measured): 75 mm long, 1/8 in (3.175 mm) wide, bare. From the testing end: C line at 10 mm, T line at
 // 20 mm, both 1 mm wide. Thickness is assumed (0.5 mm).
-// Assembly frame: perf board lower-left corner, +Z up. The strip runs along Y, testing end toward -Y, under the
-// sensors at X 70.40: TCS3448 (test) at Y 34.62, AS7343 (control) at Y 16.84. The lines sit centred between them.
+// Assembly frame: perf board lower-left corner, +Z up. Insert from -Y, testing end toward +Y.
+// Photo-layout coordinates are shared with the enclosure through AsBuiltLayout.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,16 +13,15 @@ using Inventor;
 
 public static class LfaStrip
 {
-    const double Len = 75.0, Width = 3.175, Thick = 0.5;      // Thick is ASSUMED
-    const double LineC = 10.0, LineT = 20.0, LineW = 1.0;     // from the testing end
-    const double SensorX = 70.40, TcsY = 34.62, AsY = 16.84;
-    const double StripTopZ = -18.0;                          // 0.1 mm below the enclosure's tunnel floor (Enclosure.cs SlotFloorZ -17.9)
+    const double Len = AsBuiltLayout.StripLen, Width = AsBuiltLayout.StripW, Thick = AsBuiltLayout.StripT;
+    const double LineC = AsBuiltLayout.LineC, LineT = AsBuiltLayout.LineT, LineW = 1.0;
+    const double SensorX = AsBuiltLayout.SensorX, TcsY = AsBuiltLayout.TcsY, AsY = AsBuiltLayout.AsY;
+    const double StripTopZ = AsBuiltLayout.StripTopZ;
     const double TravelMax = 80.0;
 
     static Application app; static TransientGeometry tg;
 
-    // Fully inserted: lines centred between the sensors, so T is 3.89 mm inward of the TCS3448 and C of the AS7343.
-    static double StopY { get { return (TcsY + AsY) / 2 - (LineC + LineT) / 2; } }   // testing end, fully inserted
+    static double StopY { get { return AsBuiltLayout.StripStopY; } }
 
     static object Proxy(ComponentOccurrence occ, object entity) { object p; occ.CreateGeometryProxy(entity, out p); return p; }
     static bool Near(double a, double b) { return Math.Abs(a - b) < 0.02; }
@@ -125,10 +124,10 @@ public static class LfaStrip
     static void Attach(AssemblyDocument asm, string stripPath, List<string> log)
     {
         var acd = asm.ComponentDefinition;
-        // Start fully inserted: strip local x -> +Y, local y -> -X, local z -> +Z.
+        // Start fully inserted: strip local x -> -Y, local y -> +X, local z -> +Z.
         var m = tg.CreateMatrix();
         m.SetCoordinateSystem(tg.CreatePoint(SensorX / 10, StopY / 10, (StripTopZ - Thick) / 10),
-                              tg.CreateVector(0, 1, 0), tg.CreateVector(-1, 0, 0), tg.CreateVector(0, 0, 1));
+                              tg.CreateVector(0, -1, 0), tg.CreateVector(1, 0, 0), tg.CreateVector(0, 0, 1));
         var strip = acd.Occurrences.Add(stripPath, m);
         var pd = (PartComponentDefinition)strip.Definition;
 
@@ -143,17 +142,17 @@ public static class LfaStrip
         var stop = fixedPlane(0, StopY, 0, new double[] { 0, 0, 1 }, new double[] { 1, 0, 0 }, "Strip stop");                     // normal +Y
 
         object sXY = Proxy(strip, pd.WorkPlanes[3]), sXZ = Proxy(strip, pd.WorkPlanes[2]), sYZ = Proxy(strip, pd.WorkPlanes[1]);
-        Func<double> stripMinY = () => strip.RangeBox.MinPoint.Y * 10;
+        Func<double> stripTipY = () => strip.RangeBox.MaxPoint.Y * 10;
         Place(asm, sXY, floor, 0, () => Near(strip.RangeBox.MinPoint.Z * 10, StripTopZ - Thick), "Strip on floor", log);
         Place(asm, sXZ, centre, 0, () => Near((strip.RangeBox.MinPoint.X + strip.RangeBox.MaxPoint.X) * 5, SensorX)
-                                          && strip.Transformation.Cell[2, 1] > 0.99, "Strip centred", log);   // local x -> +Y
-        var ins = Place(asm, sYZ, stop, 1.0, () => Near(stripMinY(), StopY + 10), "Strip insertion", log, true);
+                                          && strip.Transformation.Cell[2, 1] < -0.99, "Strip centred", log);   // local x -> -Y
+        var ins = Place(asm, sYZ, stop, 1.0, () => Near(stripTipY(), StopY - 10), "Strip insertion", log, true);
         Parameter p = ins is MateConstraint ? ((MateConstraint)ins).Offset : ((FlushConstraint)ins).Offset;
         p.Name = "StripInsertion"; p.Expression = "0 mm"; asm.Update();
 
-        double tY = StopY + LineT, cY = StopY + LineC;
+        double tY = StopY - LineT, cY = StopY - LineC;
         log.Add(string.Format("Fully inserted: testing end Y {0:F2}; C line Y {1:F2} ({2:F2} mm from AS7343); T line Y {3:F2} ({4:F2} mm from TCS3448); far end Y {5:F2}",
-            StopY, cY, AsY - cY, tY, TcsY - tY, StopY + Len));
+            StopY, cY, AsY - cY, tY, TcsY - tY, StopY - Len));
         var rb = strip.RangeBox;
         log.Add(string.Format("Strip: x {0:F2}..{1:F2} y {2:F2}..{3:F2} z {4:F2}..{5:F2}", rb.MinPoint.X*10, rb.MaxPoint.X*10, rb.MinPoint.Y*10, rb.MaxPoint.Y*10, rb.MinPoint.Z*10, rb.MaxPoint.Z*10));
 
@@ -169,7 +168,8 @@ public static class LfaStrip
                 p.Expression = mm.ToString(System.Globalization.CultureInfo.InvariantCulture) + " mm"; asm.Update();
                 var res = acd.AnalyzeInterference(one, others);
                 double vol = 0; foreach (InterferenceResult r in res) vol += r.Volume * 1000;
-                log.Add(string.Format("Strip insertion {0,3:F0} mm: testing end Y {1,6:F2}, collisions {2} ({3:F3} mm3)", mm, strip.RangeBox.MinPoint.Y * 10, res.Count, vol));
+                log.Add(string.Format("Strip insertion {0,3:F0} mm: testing end Y {1,6:F2}, collisions {2} ({3:F3} mm3)", mm, stripTipY(), res.Count, vol));
+                if (vol > 1e-4) throw new Exception("Strip collides with enclosure: " + log[log.Count - 1]);
             }
             p.Expression = "0 mm"; asm.Update();
         }

@@ -116,6 +116,7 @@ public static class PouchSlide
             var res = acd.AnalyzeInterference(one, others);
             double vol = 0; foreach (InterferenceResult r in res) vol += r.Volume * 1000;
             log.Add(string.Format("Insertion {0,5:F0} mm: tip X {1,7:F2}, collisions {2} ({3:F3} mm3)", mm, pouch.RangeBox.MaxPoint.X * 10, res.Count, vol));
+            if (vol > 1e-4) throw new Exception("Pouch collides with enclosure: " + log[log.Count - 1]);
         }
         p.Expression = "0 mm";
         asm.Update();

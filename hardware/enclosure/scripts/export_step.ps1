@@ -2,11 +2,12 @@
 # so the model can be viewed without Inventor (https://3dviewer.net, FreeCAD).
 # Run in Windows PowerShell with Inventor open and Optical-Sensing-Device.ipj as the active project.
 # Re-run after changing the model. The pouch is exported at its current Insertion position.
+param([string]$Root = (Join-Path $PSScriptRoot "..\exports\as-built-native"))
 $ErrorActionPreference = 'Stop'
 $inv = [Runtime.InteropServices.Marshal]::GetActiveObject("Inventor.Application")
 $step = $inv.ApplicationAddIns.ItemById("{90AF7F40-0C01-11D5-8E83-0010B541CD80}")  # "Translator: STEP"
 if (-not $step.Activated) { $step.Activate() }
-$root = Split-Path $PSScriptRoot
+$root = (Resolve-Path $Root).Path
 foreach ($name in "Enclosure Assembly", "Electronics Assembly") {
     $path = Join-Path $root "$name.iam"
     $wasOpen = @($inv.Documents | Where-Object { $_.FullFileName -eq $path }).Count -gt 0

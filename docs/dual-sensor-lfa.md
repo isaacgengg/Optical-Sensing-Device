@@ -10,13 +10,17 @@
 First/second refers to the team's viewing orientation, not a universal strip
 flow direction. Verify the actual T/C markings before mounting. Angle, field
 of view and placement are mechanical: firmware cannot correct a sensor viewing
-both lines or the wrong line. This PR does not modify the enclosure CAD.
+both lines or the wrong line. The [photo-layout CAD setup](../hardware/enclosure/README.md)
+keeps these roles by reversing the strip entry and aiming each optical path.
 
 Both devices use the existing GPIO21 SDA / GPIO22 SCL bus. No address mux is
 needed for 0x59 and 0x39. Verify the specific breakout's supply/level shifting
 and combined pull-ups before connecting it; bare chips are not 3.3 V I/O.
-The current illuminator remains one shared GPIO-controlled light. Separate
-zone LEDs or PWM need a separate hardware/firmware change.
+The default illuminator is the shared GPIO-controlled light. PR #20 added
+`--sensor-leds` to also enable the boards' onboard white LEDs, which the new
+optical module uses. Both initialized boards light together, including in
+color mode; only TCS is sampled for color. Independently switching zone LEDs
+would need a separate firmware change.
 
 ## Build and run
 
@@ -24,6 +28,8 @@ zone LEDs or PWM need a separate hardware/firmware change.
 python3 tools/run.py dual PORT
 # Or BLE output:
 python3 tools/run.py dual-ble PORT
+# Onboard LEDs for the photo-layout optical module (default 20 mA):
+python3 tools/run.py dual PORT --sensor-leds
 ```
 
 Omit PORT to build only. The existing `tcs3448` and `tcs3448-ble` builds remain
@@ -55,7 +61,7 @@ Synthetic references in the mock build are demonstrations only.
 1. Fix the sensor positions, viewing angles and illumination in the final rig.
    Start with 100 ms and 256x for each sensor. Lower exposure/gain if saturated.
 2. For each zone, collect repeated dark readings with light blocked (cover the
-   sensor/optical path; the command still turns the shared LED on). Record
+   sensor/optical path; the command still turns the configured lights on). Record
    `test_raw` and `control_raw` separately. Check for light leaks.
 3. Collect repeated readings of blank membrane at each line position under
    the same settings. Use membrane/background appropriate to the assay,

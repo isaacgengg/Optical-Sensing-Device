@@ -1,7 +1,8 @@
-// Places the boards in Electronics Assembly.iam for the dual-sensor layout (PR #19). Run with build_electronics.ps1.
+// Places the boards for the photo-derived as-built layout. Run with build_electronics.ps1.
 //
 // Coordinates are millimetres in the assembly frame: perf board lower-left corner, +Z up, board bottom Z = 0.
-// Perf grid: HoleX(i) = 8.17 + 2.54 i (i = 0..29), HoleY(j) = 5.79 + 2.54 j (j = 0..23).
+// HX/HY retain the previous ESP32 reference placement; sensor XY comes from AsBuiltLayout.
+// The old perfboard hole pattern is a reference, NOT verified solder coordinates for the photo.
 // Both sensor breakouts hang below the board, component side down, on 1x6 headers with a 2.5 mm spacer.
 using System;
 using System.Collections.Generic;
@@ -13,16 +14,11 @@ public static class Electronics
     static double HX(int i) { return X0 + P * i; }
     static double HY(int j) { return Y0 + P * j; }
 
-    // ESP32 (matches the real board): pins in columns 1 and 11, nearest-USB pin pair in row 21
-    // (rows 22-23 free above it), USB toward +Y.
+    // Retained ESP32 reference placement (not remeasured in this change), USB toward +Y.
     const int EspColLeft = 1, EspRowUsbPin = 21;
-    // Both breakouts turned so each board extends toward +Y from its header, putting each onboard LED on the +Y side
-    // of its sensor. For the TCS3448 that is the side away from the LFA lines, so the pouch film's mirror reflection
-    // of the LED bounces away from the sensor (about 45 deg lighting). Headers along rows, pins in columns 22-27
-    // (INT col 22 ... VIN col 27). The boards' edges touch (both at Y 26.11) and the sensors are 17.78 mm apart,
-    // the closest they can get; the LFA lines are 10 mm apart, so each sits 3.89 mm inward of its sensor.
-    const int SensorCol0 = 22, TcsHeaderRow = 9, AsHeaderRow = 2;
-    const double SpacerZ = -2.5;    // breakout back face, below the header's plastic spacer
+    // Confirmed orientation: AS above TCS, both LEDs toward -Y and headers toward +Y.
+    // XY is provisional from the 2.54 mm photo grid, not snapped to invented solder holes.
+    const double SpacerZ = AsBuiltLayout.SpacerZ;
     // Perf board corner mounting holes (approximate, from the photo of the real board).
     const double MountHoleD = 2.0, MountHoleInset = 2.5;
 
@@ -93,25 +89,25 @@ public static class Electronics
         Place(esp, Mat(espTx, espTy, SpacerZ, new double[] { 0, -1, 0 }, new double[] { -1, 0, 0 }, new double[] { 0, 0, -1 }));
 
         // Breakouts: local header row at y = 2.54 with pins at x = 6.35 .. 19.05 (pin 1 = VIN at x = 6.35).
-        // Turned so local x -> -X (VIN at column 27), local y -> +Y (board extends toward +Y), local z -> -Z.
-        Func<int, Matrix> sensorMat = row => Mat(HX(SensorCol0 + 5) + 6.35, HY(row) - 2.54, SpacerZ,
-                                                 new double[] { -1, 0, 0 }, new double[] { 0, 1, 0 }, new double[] { 0, 0, -1 });
-        Place(tcs, sensorMat(TcsHeaderRow));
-        Place(tcsHdr, sensorMat(TcsHeaderRow));
+        // local x -> +X (VIN first), local y -> -Y (LED below sensor), local z -> -Z.
+        Func<double, Matrix> sensorMat = sy => Mat(AsBuiltLayout.SensorX - 12.7, sy + 8.509, SpacerZ,
+                                                 new double[] { 1, 0, 0 }, new double[] { 0, -1, 0 }, new double[] { 0, 0, -1 });
+        Place(tcs, sensorMat(AsBuiltLayout.TcsY));
+        Place(tcsHdr, sensorMat(AsBuiltLayout.TcsY));
         // The AS7343 breakout (Adafruit 6477) has the same outline, holes, sensor position and header pinout as the
         // TCS3448 breakout (compared in Adafruit's board files), so it reuses that model.
-        if (asOcc == null) { asOcc = occs.Add(tcsPath, sensorMat(AsHeaderRow)); asOcc.Name = "AS7343 (same board as TCS3448)"; }
-        Place(asOcc, sensorMat(AsHeaderRow));
-        if (asHdr == null) { asHdr = occs.Add(hdrPath, sensorMat(AsHeaderRow)); asHdr.Name = "Header 1x6 (AS7343)"; }
-        Place(asHdr, sensorMat(AsHeaderRow));
+        if (asOcc == null) { asOcc = occs.Add(tcsPath, sensorMat(AsBuiltLayout.AsY)); asOcc.Name = "AS7343 (TCS mechanical proxy)"; }
+        Place(asOcc, sensorMat(AsBuiltLayout.AsY));
+        asOcc.Name = "AS7343 (TCS mechanical proxy)";
+        if (asHdr == null) { asHdr = occs.Add(hdrPath, sensorMat(AsBuiltLayout.AsY)); asHdr.Name = "Header 1x6 (AS7343)"; }
+        Place(asHdr, sensorMat(AsBuiltLayout.AsY));
         tcs.Name = "6525 TCS3448 Light Color Sensor";
 
         asm.Update(); asm.Save();
         foreach (ComponentOccurrence o in occs) log.Add(Box(o));
-        double sx = HX(SensorCol0 + 5) + 6.35 - 12.7;
-        log.Add(string.Format("TCS3448 sensor centre ({0:F2}, {1:F2}), LED Y {2:F2}; AS7343 sensor centre ({0:F2}, {3:F2}), LED Y {4:F2}; face Z {5:F2}",
-            sx, HY(TcsHeaderRow) - 2.54 + 8.509, HY(TcsHeaderRow) - 2.54 + 15.875,
-            HY(AsHeaderRow) - 2.54 + 8.509, HY(AsHeaderRow) - 2.54 + 15.875, SpacerZ - 2.25));
+        log.Add(string.Format("PROVISIONAL TCS3448 test/color ({0:F2}, {1:F2}), LED Y {2:F2}; AS7343 control ({0:F2}, {3:F2}), LED Y {4:F2}; face Z {5:F2}",
+            AsBuiltLayout.SensorX, AsBuiltLayout.TcsY, AsBuiltLayout.TcsLedY,
+            AsBuiltLayout.AsY, AsBuiltLayout.AsLedY, AsBuiltLayout.SensorFaceZ));
         return string.Join("\n", log);
     }
 }
