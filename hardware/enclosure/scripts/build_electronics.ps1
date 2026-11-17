@@ -1,12 +1,9 @@
-# Lays out Electronics Assembly.iam (Electronics.cs), then regenerates the wiring (Wiring.cs), checks that wires
-# of different nets don't overlap, and adds it back to the assembly.
+# Lays out Electronics Assembly.iam and replaces stale routed wires with provisional pin-net markers.
+# The actual underside wiring is not visible in the photos.
 # Usage (Windows PowerShell, Inventor open with this repo's project active, not as administrator):
 #   powershell -ExecutionPolicy Bypass -File hardware\enclosure\scripts\build_electronics.ps1
 $ErrorActionPreference = 'Stop'
-$dll = "C:\Program Files\Autodesk\Inventor 2027\Bin\Autodesk.Inventor.Interop.dll"
-Add-Type -Path $dll
-Add-Type -TypeDefinition (Get-Content (Join-Path $PSScriptRoot "Electronics.cs") -Raw) -ReferencedAssemblies $dll
-Add-Type -TypeDefinition (Get-Content (Join-Path $PSScriptRoot "Wiring.cs") -Raw) -ReferencedAssemblies $dll
+. (Join-Path $PSScriptRoot "load_cad_types.ps1")
 $inv = [Runtime.InteropServices.Marshal]::GetActiveObject("Inventor.Application")
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $wiring = Join-Path $root "Electronics\Wiring.ipt"
@@ -22,4 +19,4 @@ $asm = $inv.Documents.Open((Join-Path $root "Electronics Assembly.iam"), $true)
 $occ = $asm.ComponentDefinition.Occurrences.Add($wiring, $inv.TransientGeometry.CreateMatrix())
 $occ.Grounded = $true
 $asm.Update(); $asm.Save()
-"Wiring added to Electronics Assembly"
+"Pin-net markers added; wire routing and continuity are not modeled"

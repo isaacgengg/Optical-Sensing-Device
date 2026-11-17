@@ -1,0 +1,25 @@
+{
+  "revision": "photo-layout-2026-11-12",
+  "status": "PROVISIONAL: photo-derived XY; heights inherited, physical fit not verified",
+  "sources": ["IMG_7890.heic", "IMG_7891.heic"],
+  "frame": "mm; lower-left of 90 x 70 perfboard viewed from solder side; USB toward +Y; components toward -Z",
+  "photo_grid": {
+    "pitch_mm": 2.54,
+    "visible_columns": 31,
+    "visible_rows": 26,
+    "centred_origin_assumption_mm": [6.9, 3.25],
+    "note": "Grid count and centred origin are provisional. Raised boards introduce parallax; do not use these estimates as solder-hole assignments."
+  },
+  "sensor_x_mm": 73.0,
+  "tcs_y_mm": 25.0,
+  "as_y_mm": 44.0,
+  "xy_check_allowance_mm": 1.5,
+  "breakout_back_z_mm": -2.5,
+  "sensor_face_z_mm": -4.75,
+  "led_face_z_mm": -4.35,
+  "led_direction_y": -1,
+  "roles": {"test": "TCS3448", "color": "TCS3448", "control": "AS7343"},
+  "strip": {"length_mm": 75.0, "width_mm": 3.175, "thickness_mm": 0.5, "test_from_tip_mm": 20.0, "control_from_tip_mm": 10.0, "top_z_mm": -18.0},
+  "apertures_mm": [1.2, 1.6, 2.0, 2.5],
+  "default_aperture_mm": 1.6
+}

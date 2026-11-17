@@ -4,7 +4,7 @@
 //
 // All numbers are millimetres in the Electronics Assembly frame: perf board lower-left corner, +Z up, perf board
 // bottom at Z = 0. The pouch enters through the -X wall (under the ESP32), tip first, and stops in a tapered pocket
-// with its pad under the TCS3448. The LFA strip enters through the +Y wall in a groove in the tunnel floor (flush,
+// with its pad under the TCS3448. The LFA strip enters through the -Y wall in a groove in the tunnel floor (flush,
 // so the pouch slides over it) with its lines under the two sensors. Each sensor looks through a small aperture
 // aimed at its LFA line; the onboard white LED of each breakout lights its zone through an opening in the plate.
 using System;
@@ -14,11 +14,12 @@ using Inventor;
 public static class Enclosure
 {
     // ---------- Fixed by the electronics assembly ----------
-    const double SensorX = 70.40, TcsY = 34.62, AsY = 16.84, SensorFaceZ = -4.75;
-    const double TcsLedY = 41.99, AsLedY = 24.21, LedZ = -4.35;      // onboard white LEDs, +Y of each sensor (X = SensorX)
-    const double BoardsX0 = 57.70, BoardsX1 = 83.10, BoardsY0 = 8.33, BoardsY1 = 43.89, BoardsJoinY = 26.11;
-    const double BoardsLowestZ = -6.55;                               // STEMMA QT connectors (X outside 63.1..77.7)
-    const double TcsPinsY0 = 27.38, TcsPinsY1 = 29.92, AsPinsY0 = 9.60, AsPinsY1 = 12.14;   // header pin ends, Z -5.5
+    const double SensorX = AsBuiltLayout.SensorX, TcsY = AsBuiltLayout.TcsY, AsY = AsBuiltLayout.AsY, SensorFaceZ = AsBuiltLayout.SensorFaceZ;
+    const double TcsLedY = AsBuiltLayout.TcsLedY, AsLedY = AsBuiltLayout.AsLedY, LedZ = AsBuiltLayout.LedZ; // LEDs toward -Y
+    const double BoardsX0 = AsBuiltLayout.BoardsX0, BoardsX1 = AsBuiltLayout.BoardsX1, BoardsY0 = AsBuiltLayout.BoardsY0, BoardsY1 = AsBuiltLayout.BoardsY1;
+    const double ChamberSplitY = AsBuiltLayout.ChamberSplitY;
+    const double BoardsLowestZ = -6.55;                               // inherited STEMMA QT connector height
+    const double TcsPinsY0 = AsBuiltLayout.TcsPinsY0, TcsPinsY1 = AsBuiltLayout.TcsPinsY1, AsPinsY0 = AsBuiltLayout.AsPinsY0, AsPinsY1 = AsBuiltLayout.AsPinsY1;
     const double EspLowestZ = -7.20;
     const double UsbX = 23.41, UsbZ = -5.40;                          // ESP32 micro-USB centre, facing +Y
     const double LcdPcbTopZ = 22.1, LcdTopZ = 29.3;
@@ -26,10 +27,10 @@ public static class Enclosure
     static readonly double[][] LcdHoles = { new[]{29.25,72.5}, new[]{29.25,-2.5}, new[]{60.25,72.5}, new[]{60.25,-2.5} };
 
     // ---------- LFA strip (measured) ----------
-    const double TLineY = 30.73, CLineY = 20.73;                      // lines centred between the sensors
-    const double StripStopY = 10.73;                                  // testing end, fully inserted
-    const double StripW = 3.175, StripT = 0.5;                        // StripT ASSUMED
-    const double StripTopZ = -18.0;                                   // 0.1 mm below the tunnel floor
+    const double TLineY = AsBuiltLayout.TLineY, CLineY = AsBuiltLayout.CLineY;
+    const double StripStopY = AsBuiltLayout.StripStopY;               // tip points +Y, inserted from -Y
+    const double StripW = AsBuiltLayout.StripW, StripT = AsBuiltLayout.StripT;
+    const double StripTopZ = AsBuiltLayout.StripTopZ;
     const double GrooveClr = 0.2;
 
     // ---------- Pouch (measured: 3.75 x 2 in, 1 in front diagonals, 0.5 in second diagonals, 0.75 in pad) ----------
@@ -55,15 +56,16 @@ public static class Enclosure
     // ---------- Optics ----------
     // Each sensor sits over a solid black block with two angled bores: a view bore from the sensor down to an
     // aperture aimed at its LFA line, and an LED bore from the onboard LED to an exit slot just beside the aperture.
-    const double ApertureD = 1.6;        // view spot on the strip ~2.6 mm along it, within the 3.175 mm width
+    const double ApertureD = AsBuiltLayout.ApertureD; // nominal aperture; actual optical footprint requires measurement
     const double ViewBoreExtra = 0.4;    // view bore above the aperture is ApertureD + this wide
     const double LedBoreD = 1.8;
-    const double SlotLen = 2.2, SlotHalfX = 1.5, Web = 0.4;   // LED exit slot beside the aperture, Web from its rim
-    const double BlockX0 = 63.5, BlockX1 = 77.3;               // clear of the STEMMA QT connectors
+    const double SlotLen = 2.2, SlotHalfX = 1.5, Web = 0.8;   // 0.8 lip spacing leaves >=0.4 mm actual bore separation
+    const double BlockX0 = AsBuiltLayout.BlockX0, BlockX1 = AsBuiltLayout.BlockX1;
     const double BlockTopZ = -5.0, PinRecessZ = -5.9;          // 0.25 mm under the board parts; deeper under header pins
     // Read chamber recessed into the module's underside above the read zone, so the LED light has room to land
     // where each sensor looks (the pouch pad is only 1 mm below the module). Split between the sensors by a wall.
-    const double ChamberTopZ = -12.0, ChamberX0 = 66.4, ChamberX1 = 74.4, ChamberY0 = 16.0, ChamberY1 = 37.0;
+    const double ChamberTopZ = -12.0, ChamberX0 = AsBuiltLayout.ChamberX0, ChamberX1 = AsBuiltLayout.ChamberX1,
+                 ChamberY0 = AsBuiltLayout.ChamberY0, ChamberY1 = AsBuiltLayout.ChamberY1;
     const double ChamberWallT = 1.0;
     const double AperturePlate = 1.5;                          // apertures and LED slots go through the chamber's ceiling
 
@@ -232,6 +234,11 @@ public static class Enclosure
         Rect(zb, SplitZ - zb, OutX0, OutY0, OutX1, OutY1, J, "Shell");
         Rect(zf, SplitZ - zf, InX0, InY0, InX1, InY1, C, "Pocket");
 
+        // Add supports before cutting the pouch envelope so they cannot obstruct insertion.
+        Rects(zf, -zf, new[] {
+            new[]{InX0, InY0, 3.5, 4.25}, new[]{86.5, InY0, InX1, 4.25},
+            new[]{InX0, 66.5, 3.5, InY1}, new[]{86.5, 66.5, InX1, InY1} }, J, "Board posts");
+
         // Pedestal under the optical module (outside the tunnel), floor up to the module's underside.
         Rect(zf, LowCeilZ - zf, ModX0, ModY0, ModX1, ModY1, J, "Module pedestal");
 
@@ -240,20 +247,16 @@ public static class Enclosure
         Poly(zf, ShelfTopZ - zf, Outline(TipX, -1, PouchY, Clr + Rail, OutX0, true), J, "Tunnel");
         Poly(zf, TallCeilZ - zf, Outline(TipX, -1, PouchY, Clr, OutX0 - 2, true), C, "Pouch slot");
         double half = 25.40 + Clr + Rail;
-        Rect(LowCeilZ, TallCeilZ - LowCeilZ, StepX, PouchY - half, ModX0, PouchY + half, J, "Low ceiling");
+        // Positive-area joint to pedestal; edge-only contact here creates a nonmanifold STL.
+        Rect(LowCeilZ - 0.2, TallCeilZ - LowCeilZ + 0.2, StepX, PouchY - half, ModX0, PouchY + half, J, "Low ceiling");
 
         // Opening where the optical module drops in; its floor (the aperture plate) is the tunnel ceiling there.
         Rect(LowCeilZ, SplitZ - LowCeilZ, ModX0, ModY0, ModX1, ModY1, C, "Module opening");
 
-        // LFA strip: groove in the floor (strip top flush with it) from the stop out through the +Y wall.
+        // LFA strip now enters from -Y, maintaining TCS=test and AS=control.
         double gx0 = SensorX - StripW / 2 - GrooveClr, gx1 = SensorX + StripW / 2 + GrooveClr, gd = StripT + GrooveClr;
-        Rect(zf - gd, gd, gx0, StripStopY - 0.3, gx1, OutY1 + 1, C, "Strip groove");
-        Rect(zf, 0.6, gx0, InY1 - 0.1, gx1, OutY1 + 1, C, "Strip slot");
-
-        // Corner posts the perf board sits on (board bottom at Z 0).
-        Rects(zf, -zf, new[] {
-            new[]{InX0, InY0, 3.5, 4.25}, new[]{86.5, InY0, InX1, 4.25},
-            new[]{InX0, 66.5, 3.5, InY1}, new[]{86.5, 66.5, InX1, InY1} }, J, "Board posts");
+        Rect(zf - gd, gd, gx0, OutY0 - 1, gx1, StripStopY + 0.3, C, "Strip groove");
+        Rect(zf, 0.6, gx0, OutY0 - 1, gx1, InY0 + 0.1, C, "Strip slot");
 
         // USB opening in the +Y wall for a micro-USB plug's overmould.
         Rect(UsbZ - 4.0, 8.0, UsbX - 6.0, InY1 - 0.1, UsbX + 6.0, OutY1 + 0.5, C, "USB opening");
@@ -296,7 +299,7 @@ public static class Enclosure
 
     // Optical module: drops into the base opening and sits on the pedestal and rails; the perf board holds it down.
     // A pocket holds both breakouts. Under them a solid black block carries, per sensor, a view bore (sensor ->
-    // aperture in the floor plate, aimed at its LFA line) and an LED bore (onboard LED -> exit slot just +Y of the
+    // aperture in the floor plate, aimed at its LFA line) and an LED bore (onboard LED -> exit slot just -Y of the
     // aperture). Nothing else is open, so the sensors only see light coming back up their own view bore.
     static void BuildModule(string path, double apD)
     {
@@ -314,8 +317,8 @@ public static class Enclosure
 
         // Read chamber in the underside, split by a wall where the two boards meet.
         Rects(LowCeilZ, ChamberTopZ - LowCeilZ, new[] {
-            new[]{ ChamberX0, ChamberY0, ChamberX1, BoardsJoinY - ChamberWallT / 2 },
-            new[]{ ChamberX0, BoardsJoinY + ChamberWallT / 2, ChamberX1, ChamberY1 } }, C, "Read chamber");
+            new[]{ ChamberX0, ChamberY0, ChamberX1, ChamberSplitY - ChamberWallT / 2 },
+            new[]{ ChamberX0, ChamberSplitY + ChamberWallT / 2, ChamberX1, ChamberY1 } }, C, "Read chamber");
 
         var info = new List<string>();
         double apZ0 = ChamberTopZ, apZ1 = ChamberTopZ + AperturePlate, apZm = (apZ0 + apZ1) / 2;
@@ -330,9 +333,9 @@ public static class Enclosure
             double zv0 = apZ1, zv1 = BlockTopZ + 0.5, zvm = (zv0 + zv1) / 2;
             CylinderAlong(new[] { SensorX, ViewY(s.Y, s.Line, zvm), zvm }, u, apD + ViewBoreExtra, (zv1 - zv0) * axial, C, "View bore " + s.Tag);
 
-            // LED exit slot through the chamber ceiling, just +Y of the aperture, and the LED bore from the LED down to it.
-            double apMaxY = Math.Max(ViewY(s.Y, s.Line, apZ1), ViewY(s.Y, s.Line, apZ0)) + apD / 2 / cos;
-            double slot0 = apMaxY + Web, slot1 = slot0 + SlotLen, slotC = (slot0 + slot1) / 2;
+            // LED exit slot toward -Y, matching the actual boards.
+            double apMinY = Math.Min(ViewY(s.Y, s.Line, apZ1), ViewY(s.Y, s.Line, apZ0)) - apD / 2 / cos;
+            double slot1 = apMinY - Web, slot0 = slot1 - SlotLen, slotC = (slot0 + slot1) / 2;
             Rect(apZ0, AperturePlate, SensorX - SlotHalfX, slot0, SensorX + SlotHalfX, slot1, C, "LED slot " + s.Tag);
             BoreBetween(new[] { SensorX, s.Led, LedZ }, new[] { SensorX, slotC, apZ1 }, LedBoreD, "LED bore " + s.Tag);
 
@@ -444,7 +447,7 @@ public static class Enclosure
 
     // ---------- Optics test jig ----------
     // A 2 mm floor plate under the whole perf board with posts at its corners, and a block under the optical module
-    // with the module's locating pocket, the pouch slot (3 mm, open toward -X) and the strip groove (open toward +Y),
+    // with the module's locating pocket, the pouch slot (3 mm, open toward -X) and the strip groove (open toward -Y),
     // all at the enclosure's heights. The perf board rests on the posts and the module; cover it with a dark box
     // when measuring.
     static void BuildSled(string path)
@@ -462,8 +465,9 @@ public static class Enclosure
         // No rim over the pouch slot on the -X side: it would be a ~50 mm unsupported bridge. The other three sides locate the module.
         Rect(LowCeilZ, rim + 0.1, sx0 - 0.1, PouchY - 25.40 - Clr, ModX0 + 0.1, PouchY + 25.40 + Clr, C, "Rim gap over slot");
         double gx0 = SensorX - StripW / 2 - GrooveClr, gx1 = SensorX + StripW / 2 + GrooveClr, gd = StripT + GrooveClr;
-        Rect(zf - gd, gd, gx0, StripStopY - 0.3, gx1, 71, C, "Strip groove");
+        Rect(zf - gd, gd, gx0, -1, gx1, StripStopY + 0.3, C, "Strip groove");
         Rects(zf, -zf, new[] { new[]{0.0, 0.0, 4.0, 4.0}, new[]{86.0, 0.0, 90.0, 4.0}, new[]{0.0, 66.0, 4.0, 70.0}, new[]{86.0, 66.0, 90.0, 70.0} }, J, "Board posts");
+        Poly(zf, LowH, Outline(TipX, -1, PouchY, Clr, -2, true), C, "Pouch clearance through posts");
 
         Look(doc, "Black|Smooth - Black");
         Finish(doc, path, "Optics test jig: floor plate, board posts, module pocket, pouch slot and strip groove at the enclosure's heights");

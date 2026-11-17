@@ -5,9 +5,10 @@
 # stay round.
 # Usage (Windows PowerShell, Inventor open with this repo's project active, not as administrator):
 #   powershell -ExecutionPolicy Bypass -File hardware\enclosure\scripts\export_test_jig.ps1
+param([string]$Root = (Join-Path $PSScriptRoot "..\exports\as-built-native"))
 $ErrorActionPreference = 'Stop'
 $inv = [Runtime.InteropServices.Marshal]::GetActiveObject("Inventor.Application")
-$root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$root = (Resolve-Path $Root).Path
 $src = Join-Path $root "Test Jig"
 $out = Join-Path $root "exports\test-jig"
 New-Item -ItemType Directory -Force $out | Out-Null
