@@ -416,7 +416,7 @@ def main():
               "parts":{},"optics":{},"fit":{},
               "not_verified":["physical XY or heights", "native Inventor execution", "optical signal or calibration", "real wire routes", "AS7343 proxy component heights"]}
     report["assembly_detail"] = "Breakout exports omit copper/mask and solids below 1 mm3 or 0.2 mm tall; full vendor solids used for interference. Perfboard is outline only."
-    report["source_sha256"] = {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest()
+    report["source_sha256"] = {p.relative_to(ROOT).as_posix():hashlib.sha256(p.read_bytes()).hexdigest()
                                for p in [CONFIG,ROOT/"scripts/layout.py",Path(__file__),
                                          ROOT/"scripts/Enclosure.cs",ROOT/"scripts/Electronics.cs",
                                          ROOT/"scripts/LfaStrip.cs",ROOT/"scripts/Wiring.cs",
@@ -460,7 +460,7 @@ def main():
         for src,dest in mirrors.items():
             dest.parent.mkdir(parents=True,exist_ok=True)
             shutil.copyfile(args.out/src,dest)
-        report["compatibility_copies"] = {str(dst.relative_to(ROOT)):src for src,dst in mirrors.items()}
+        report["compatibility_copies"] = {dst.relative_to(ROOT).as_posix():src for src,dst in mirrors.items()}
     (args.out/"validation.json").write_text(json.dumps(report,indent=2)+"\n")
     print(f"Verified {len(parts)} printable solids; report: {args.out/'validation.json'}",flush=True)
 
