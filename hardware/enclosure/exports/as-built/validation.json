@@ -7,17 +7,33 @@
     "Enclosure Base": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 46897.497030957325,
+      "volume_mm3": 40463.23886692701,
       "bounds_mm": [
-        -3.500000100000014,
-        -8.000000100000014,
+        -3.5000001000000145,
+        -8.000000100000015,
         -19.900000100000007,
         93.00000010000001,
         81.50000010000001,
-        4.000000100000007
+        4.000000100000008
       ],
-      "step_volume_error_mm3": 1.5861587598919868e-09,
-      "triangles": 312,
+      "step_volume_error_mm3": 1.3969838619232178e-09,
+      "triangles": 8376,
+      "nonmanifold_edges": 0
+    },
+    "Tunnel Cover": {
+      "valid": true,
+      "solids": 1,
+      "volume_mm3": 8210.940801978386,
+      "bounds_mm": [
+        -3.500000100000016,
+        -5.800000100000016,
+        -14.900000100000007,
+        79.65032144022281,
+        63.70000010000002,
+        -7.799891109473356
+      ],
+      "step_volume_error_mm3": 2.710294211283326e-10,
+      "triangles": 4196,
       "nonmanifold_edges": 0
     },
     "Enclosure Lid": {
@@ -39,7 +55,7 @@
     "Test Sled": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 15868.743560809726,
+      "volume_mm3": 15852.988426873408,
       "bounds_mm": [
         -1.0000002009718347e-07,
         -1.0000002009718347e-07,
@@ -48,8 +64,8 @@
         70.00000010000002,
         1.0000000355271367e-07
       ],
-      "step_volume_error_mm3": 2.0190782379359007e-10,
-      "triangles": 162,
+      "step_volume_error_mm3": 2.1645973902195692e-10,
+      "triangles": 166,
       "nonmanifold_edges": 0
     },
     "Alignment Gauge": {
@@ -59,10 +75,10 @@
       "bounds_mm": [
         -1e-07,
         -1e-07,
-        -8.557827095169047e-05,
+        -8.557827094530398e-05,
         90.0000001,
         70.0000001,
-        2.000085578270952
+        2.0000855782709452
       ],
       "step_volume_error_mm3": 5.4569682106375694e-12,
       "triangles": 4116,
@@ -71,7 +87,7 @@
     "Optical Module d1.2": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 9005.60554016045,
+      "volume_mm3": 9005.60554016046,
       "bounds_mm": [
         57.79999989999998,
         13.228999899999984,
@@ -80,14 +96,14 @@
         55.009000100000016,
         -0.1999998999999834
       ],
-      "step_volume_error_mm3": 7.494236342608929e-09,
+      "step_volume_error_mm3": 7.490598363801837e-09,
       "triangles": 6692,
       "nonmanifold_edges": 0
     },
     "Optical Module d1.6": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 8990.223460077601,
+      "volume_mm3": 8990.223460077552,
       "bounds_mm": [
         57.79999989999998,
         13.228999899999984,
@@ -96,14 +112,14 @@
         55.009000100000016,
         -0.1999998999999834
       ],
-      "step_volume_error_mm3": 3.683799150167033e-07,
+      "step_volume_error_mm3": 3.6833807826042175e-07,
       "triangles": 6658,
       "nonmanifold_edges": 0
     },
     "Optical Module d2.0": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 8971.166324941885,
+      "volume_mm3": 8971.166324941898,
       "bounds_mm": [
         57.79999989999998,
         13.228999899999984,
@@ -112,14 +128,14 @@
         55.009000100000016,
         -0.1999998999999834
       ],
-      "step_volume_error_mm3": 3.7935024010948837e-07,
+      "step_volume_error_mm3": 3.793720679823309e-07,
       "triangles": 6690,
       "nonmanifold_edges": 0
     },
     "Optical Module d2.5": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 8942.208908634731,
+      "volume_mm3": 8942.208908634717,
       "bounds_mm": [
         57.79999989999998,
         13.228999899999984,
@@ -128,7 +144,7 @@
         55.009000100000016,
         -0.1999998999999834
       ],
-      "step_volume_error_mm3": 6.51925802230835e-09,
+      "step_volume_error_mm3": 6.517439032904804e-09,
       "triangles": 6702,
       "nonmanifold_edges": 0
     }
@@ -144,7 +160,7 @@
           23.31917123158536,
           25.51917123158536
         ],
-        "minimum_bore_gap_mm": 0.5575052709763638,
+        "minimum_bore_gap_mm": 0.5575052709763672,
         "bore_overlap_mm3": 0.0,
         "strip_envelope_y": [
           26.68008984459349,
@@ -331,7 +347,34 @@
     "Enclosure Base/Enclosure Lid": {
       "overlap_mm3": 0.0
     },
+    "Enclosure Base/Tunnel Cover": {
+      "overlap_mm3": 0.0
+    },
+    "Tunnel Cover/Enclosure Lid": {
+      "overlap_mm3": 0.0
+    },
+    "Tunnel Cover/ESP32": {
+      "overlap_mm3": 0.0
+    },
+    "Tunnel Cover/LCD": {
+      "overlap_mm3": 0.0
+    },
+    "Tunnel Cover/TCS3448_test_color": {
+      "overlap_mm3": 0.0
+    },
+    "Tunnel Cover/AS7343_control_proxy": {
+      "overlap_mm3": 0.0
+    },
+    "Tunnel Cover/TCS3448_test_color_header": {
+      "overlap_mm3": 0.0
+    },
+    "Tunnel Cover/AS7343_control_proxy_header": {
+      "overlap_mm3": 0.0
+    },
     "module/Enclosure Base": {
+      "overlap_mm3": 0.0
+    },
+    "module/Tunnel Cover": {
       "overlap_mm3": 0.0
     },
     "module/Test Sled": {
@@ -348,16 +391,16 @@
   "assembly_detail": "Breakout exports omit copper/mask and solids below 1 mm3 or 0.2 mm tall; full vendor solids used for interference. Perfboard is outline only.",
   "source_sha256": {
     "as-built-layout.json": "3f2831da516e964fa0e66f2a3d559711dcc6f3ab123e78123fdd9cf05f6ed49d",
-    "scripts/layout.py": "53b502c477d70ee4ad8375e98381a49d026fb8a3b45325f8e5c1ea72b761042b",
-    "scripts/build_as_built.py": "835509dcbfea0a9d3510af3c75ce06fc6770abc4fce7990300206fd5091008c0",
-    "scripts/Enclosure.cs": "f9b8d7c1c59bfd66a3d3e98bedf0a3a3f84c037f927407d5920d833bb6c9e1ac",
-    "scripts/Electronics.cs": "f154bb98f905676edee20863cd350507c711cd9def9c6964fec355b7e69d43ae",
-    "scripts/LfaStrip.cs": "23fa767e0963f9d10fd1aeecf02b3d94eec863fe0b6e5cd0c5e19b5c97ce4cf4",
-    "scripts/Wiring.cs": "f41e1db6a7161be95dd6ba05ecb94e6ee8c9bb673ded433bfe4f2da88fce818d",
-    "reference/ESP32.step": "e105512e329e48d2281737aaffa619e5ea137566d41037de8b43be9af28b688e",
-    "reference/LCD.step": "29c6145ff7768282ec131f3f4ced2d4256cadad065ac6615874e6782924843e7",
-    "reference/Header.step": "e9e8c326857f7baf9599a8f1036e6230632ce95bbf3012535cc7862e63d9cfef",
-    "Purchased Parts/Adafruit/6525 TCS3448 Light Color Sensor.step": "52a1c962e682278e87c751baa7e938b24a18d72c05c8033682d5ad2bb63ca090"
+    "scripts\\layout.py": "53b502c477d70ee4ad8375e98381a49d026fb8a3b45325f8e5c1ea72b761042b",
+    "scripts\\build_as_built.py": "e1a6ea57bff6ee21195681deb249615d1aaea671228b3e3884f468b5ac837a6b",
+    "scripts\\Enclosure.cs": "b1ccf84e5166d2f33a17446ff54cb2d9a9ec3b1de0f8e9a6fd4f7abe1cd24dd8",
+    "scripts\\Electronics.cs": "f154bb98f905676edee20863cd350507c711cd9def9c6964fec355b7e69d43ae",
+    "scripts\\LfaStrip.cs": "23fa767e0963f9d10fd1aeecf02b3d94eec863fe0b6e5cd0c5e19b5c97ce4cf4",
+    "scripts\\Wiring.cs": "f41e1db6a7161be95dd6ba05ecb94e6ee8c9bb673ded433bfe4f2da88fce818d",
+    "reference\\ESP32.step": "e105512e329e48d2281737aaffa619e5ea137566d41037de8b43be9af28b688e",
+    "reference\\LCD.step": "29c6145ff7768282ec131f3f4ced2d4256cadad065ac6615874e6782924843e7",
+    "reference\\Header.step": "e9e8c326857f7baf9599a8f1036e6230632ce95bbf3012535cc7862e63d9cfef",
+    "Purchased Parts\\Adafruit\\6525 TCS3448 Light Color Sensor.step": "52a1c962e682278e87c751baa7e938b24a18d72c05c8033682d5ad2bb63ca090"
   },
   "ray_checks": {
     "Optical Module d1.2": {
@@ -430,40 +473,42 @@
     }
   },
   "sha256": {
-    "Alignment Gauge.step": "79b92957ecda6a4a4cfbab9fa670c5d9701662c65ab239c0b9c1616abc18df49",
-    "Alignment Gauge.stl": "af39afca3d068156be094c1791e1bde8d326477a0b7a204c8341296262caea3c",
-    "Electronics Assembly.step": "2f02bf21aa2ba0016e767121e8d66fa2c9327db615938e6ab2d9e6eb45d2818c",
-    "Enclosure Base.step": "9aaf06dc224581c8785a20f30ce47fb2a5616b242b9409b3e165500e6fbc5251",
-    "Enclosure Base.stl": "9fe7d03859c43587f0316bef55a51f0c8a1773bc7f39054380c9e16bc6558832",
-    "Enclosure Color.step": "d93c604224013e31bcf7313a9bd62b4d78c0d8bff48dbbd4f0265c544001116f",
-    "Enclosure LFA.step": "640d4e5a9767cb8decd6c25c4c2b1e3272cf0ed471173a2d29780bf5c36d8eb6",
-    "Enclosure Lid.step": "f7fc89c79e9d9099f2e151222aca57a8e3d8e1c60ad11995cdecb0f4235f998a",
-    "Enclosure Lid.stl": "e66f1439b2ce53a9dab21144b25c81271e1a249b3841083e8c45e5a77520978f",
-    "Optical Module d1.2.step": "de8b04d27488804f9e9b199ef3391f5ebb9b27841d513c20047714bbff02a7f2",
-    "Optical Module d1.2.stl": "f5a88442674e1253e9fed2f65f20a7bd2505ad749ff8d12d4931f457681d0dab",
-    "Optical Module d1.6.step": "32afaa2f5516e851d950446d9a56bae97a092e1ade480db11a493c561147553f",
-    "Optical Module d1.6.stl": "f3752719a44247e97ea0ce2973ab2ff9f26dfa6e4ea82112e0702b8988f0a073",
-    "Optical Module d2.0.step": "b21afdbdaa7c265150603cd3bbe7bf856ba7b9bfbe6d0a23984c19f5afb10bd5",
-    "Optical Module d2.0.stl": "94519f7ca4de11bd6ba97f85824eedf972f3b600962d736ecb6b011450093326",
-    "Optical Module d2.5.step": "dd23d7fdd4169eb361f0fa9b153bffb07a2a9f2f8d6eef9b18b35a956efa99e2",
-    "Optical Module d2.5.stl": "6b7fcbcdc9e635188168b124c7a67666942bf6c7edf501b9a6daf05428f9f7dc",
-    "Test Jig Color.step": "96710b4e986d40000fc272daeca4f2c73be5cece355ae5fbd2af6ea5a5079302",
-    "Test Jig LFA.step": "de4c2c7bd297c0b09d95e166be1f3fceace8ec488e3d9cca873332ecfe12864d",
-    "Test Sled.step": "d55027fa94c3a6a6bbd22d813bfb6db5217ec619588c4d85339b798106f224bb",
-    "Test Sled.stl": "077fa26364d388d0c925b856fa4de8e16a2fa6c6fc4253e6ab47bd0544b09cbb"
+    "Alignment Gauge.step": "2128a95e64f8ee7c81120d58e03d3a467eaa2ccd13bc56307e6dc38144a38d27",
+    "Alignment Gauge.stl": "dfb5d98cf9d1735e2a88d7e70346bb94328d904d20694d97b08a4e073bff96bf",
+    "Electronics Assembly.step": "8815e69bcb1b79682a74aa4254d1cd5c4ad05bf7f825c54191ba68539e43d215",
+    "Enclosure Base.step": "d542eac1a59177ce7769bb50cab738f4be8264f7fca6f2f0e2cf1f6082716c39",
+    "Enclosure Base.stl": "0b27b336d12e541abadf0879468d4261d5a9c4814d71458429f3f5e3c61c58a0",
+    "Enclosure Color.step": "6f764b0c711690242b4de55c43c399b68eae26d6c5e247d6a77dfbfb6328ab00",
+    "Enclosure LFA.step": "c328ea27942eaefd35b20ecd5cbc05e4801ab343258a0733d27b7c4599b6b8c6",
+    "Enclosure Lid.step": "892671a9502d522e816a8e4bb2d074f9a9ddc0704678e152bba219e6ae614c36",
+    "Enclosure Lid.stl": "f8350e45c2e1b0dcc912ec3afaf6459ede2cf5fd187d6188ca43480b23fb1581",
+    "Optical Module d1.2.step": "e86693081de2a5524af340c7b538e1afa39490a173141171c16c2d1be9b7aed2",
+    "Optical Module d1.2.stl": "3a9ef939ad7ec27e1b18b4b952a6287cee83a36e69837a604295cdb28f9dc19d",
+    "Optical Module d1.6.step": "363127714906cadb8480a4b7b9eea8f92223afe091397bdd2fedad2f9290f5a3",
+    "Optical Module d1.6.stl": "e990fe706a4f45c3610ac1667dffafdeafac0cdf13c36a59ddd88755193f7784",
+    "Optical Module d2.0.step": "9f07a47f4da016d806f35fd7ac753a983048a1be3f4302d08f9284069db30497",
+    "Optical Module d2.0.stl": "457b8edd0a8fda9ea5f091b8cc294d4eed9855534276c195a619aca997688a03",
+    "Optical Module d2.5.step": "0be5b4ab9a65ad351952bfb1772c4a824569a73f99673e876814e463f9aa5321",
+    "Optical Module d2.5.stl": "592e5dcdc0dcb7b8b6d6af79bd2f7c70b91867d0d1e57371a3687db9e8aacc46",
+    "Test Jig Color.step": "445265cc7e4ddbcca9c9c14bf7c83af3eb646d8274d6ee2486d9e3d5ee5ac364",
+    "Test Jig LFA.step": "cf3aba059738e47c45d629a7697e562f5ce3000ad53597ee870c21e22dfae63e",
+    "Test Sled.step": "c76f0673bc5cbcc4d4ef6ead3cecb05bb96ac3dd0a54e9ed8bb4d4e630497e82",
+    "Test Sled.stl": "847995a38fdc16d82e463e31a8cd1c61e04f90c3abcf17e12a8a0c00d93dedc0",
+    "Tunnel Cover.step": "d11504765a5c824c320ce3e2f9e4a39f2d16cf0b6d56c37aa452c28f6eed0b03",
+    "Tunnel Cover.stl": "2dc43af2ef3fad32c4f8fc731991295694c4ac35c4326a99922e23a5b447790b"
   },
   "compatibility_copies": {
     "Enclosure Assembly.step": "Enclosure LFA.step",
     "Electronics Assembly.step": "Electronics Assembly.step",
-    "exports/test-jig/Test Sled.step": "Test Sled.step",
-    "exports/test-jig/Test Sled.stl": "Test Sled.stl",
-    "exports/test-jig/Optical Module d1.2.step": "Optical Module d1.2.step",
-    "exports/test-jig/Optical Module d1.2.stl": "Optical Module d1.2.stl",
-    "exports/test-jig/Optical Module d1.6.step": "Optical Module d1.6.step",
-    "exports/test-jig/Optical Module d1.6.stl": "Optical Module d1.6.stl",
-    "exports/test-jig/Optical Module d2.0.step": "Optical Module d2.0.step",
-    "exports/test-jig/Optical Module d2.0.stl": "Optical Module d2.0.stl",
-    "exports/test-jig/Optical Module d2.5.step": "Optical Module d2.5.step",
-    "exports/test-jig/Optical Module d2.5.stl": "Optical Module d2.5.stl"
+    "exports\\test-jig\\Test Sled.step": "Test Sled.step",
+    "exports\\test-jig\\Test Sled.stl": "Test Sled.stl",
+    "exports\\test-jig\\Optical Module d1.2.step": "Optical Module d1.2.step",
+    "exports\\test-jig\\Optical Module d1.2.stl": "Optical Module d1.2.stl",
+    "exports\\test-jig\\Optical Module d1.6.step": "Optical Module d1.6.step",
+    "exports\\test-jig\\Optical Module d1.6.stl": "Optical Module d1.6.stl",
+    "exports\\test-jig\\Optical Module d2.0.step": "Optical Module d2.0.step",
+    "exports\\test-jig\\Optical Module d2.0.stl": "Optical Module d2.0.stl",
+    "exports\\test-jig\\Optical Module d2.5.step": "Optical Module d2.5.step",
+    "exports\\test-jig\\Optical Module d2.5.stl": "Optical Module d2.5.stl"
   }
 }

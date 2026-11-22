@@ -8,7 +8,7 @@ assumptions. Print the alignment gauge before the full case.
 
 **Open the updated models in [exports/as-built/](exports/as-built/).**
 `Enclosure LFA.step` and `Enclosure Color.step` are separate configurations;
-`Test Jig LFA.step` / `Test Jig Color.step` show the bench fixture. The eight
+`Test Jig LFA.step` / `Test Jig Color.step` show the bench fixture. The nine
 printable parts each have STEP and STL files in millimetres.
 
 **The root `.iam` / `.ipt` files and old PNG renders still describe the
@@ -41,6 +41,30 @@ physical fit and the Windows/Inventor rebuild.
 | Wiring geometry | Old hole coordinates and routed wires | Updated pin-net markers; no invented routes for the unseen solder side |
 | Sources / outputs | Inventor-only generation | Shared JSON → generated C# constants; CadQuery generator, alignment gauge, STEP/STL, checks and diagrams |
 | Firmware | TCS test/color; AS control | Same roles, addresses, GPIOs and channel ordering; no firmware source changed |
+
+## Print fixes after the first print (November 22, 2026)
+
+The first printed base came out with the LFA strip entry and the pouch tunnel
+filled in. The STLs had both openings; they were too small or too
+unsupported to survive printing.
+
+| Problem | Fix |
+|---|---|
+| Strip entry was a 3.6 × 1.3 mm slit in the −Y wall, which closed up | 8 × 2.5 mm entry funnel tapering ~45° to the groove |
+| Strip passage only 0.7 mm tall where something roofs the groove (base and sled) | 1.2 mm headroom above the groove along its whole length; narrowest point now 1.9 mm |
+| Pouch tunnel roof (~51 mm flat span) and low shelf (3 mm above the floor) needed unremovable support | Roof and shelf moved to a separate **Tunnel Cover**; the base keeps only the tunnel walls |
+| Optical module only located on one side in the base | 2 mm locating rim (+X, +Y, −Y where the slot narrows, −X corner post); the cover's shelf end is the main −X stop |
+| Sled rim open on the whole −X side | Stop post at the −X/+Y corner, outside the pouch slot |
+
+Area facing down steeper than 45° when printed: base 3165 → 163 mm² (only
+short bridges remain), cover 0 mm².
+
+**Tunnel Cover:** print with its flat top face on the bed. Fix it to the base
+with **4 × M2.5 × 6–8 mm self-tapping screws** (2.1 mm pilots in the base
+bosses, 2.8 mm clearance holes in the cover). Its top is 0.6 mm under the
+ESP32, the same as the old roof; check the perfboard underside has nothing
+lower than the model. The cover's front lip sits in the entrance opening, so
+any sag of the wall bridge above the entrance lands on the cover.
 
 The outer enclosure remains 96.5 × 89.5 × 49.2 mm. LCD and USB placement are
 inherited mechanical references, not newly verified against these photos.
@@ -140,7 +164,8 @@ rejection of glare. Bench-test those properties before choosing an aperture.
    dark/blank references and validated thresholds; remeasure color references.
    Old cardboard-rig references are not validated for this optical module.
    See [dual-sensor setup](../../docs/dual-sensor-lfa.md).
-9. Only after the jig fits and optical tests pass, print the base and lid.
+9. Only after the jig fits and optical tests pass, print the base, Tunnel Cover
+   and lid. Screw the cover down before fitting the module and electronics.
    Verify LCD, cable clearance and pouch/strip thickness against the actual parts.
 
 `INVALID` / `calibration=missing_or_invalid` is expected until valid LFA
@@ -159,7 +184,10 @@ python3 -m venv /tmp/capstone-cad
 /tmp/capstone-cad/bin/python hardware/enclosure/scripts/render_as_built.py
 ```
 
-On Windows use the venv's `Scripts/python.exe`. Generated output goes to
+On Windows use the venv's `Scripts/python.exe`. A Windows checkout converts
+text files to CRLF, but the recorded hashes are of git's LF copies, so a plain
+Windows run stops with "Run scripts/layout.py" or records hashes CI rejects.
+Hash text files with LF line endings when building there (STLs are binary). Generated output goes to
 `exports/as-built/`; `--out PATH` selects another output folder. The build
 fails on stale C# constants, overlapping breakouts, invalid solids, open or
 non-manifold STL edges, STEP round-trip errors, intersecting view/LED bores,
@@ -170,7 +198,7 @@ source/export hashes, part bounds/volumes, checks and remaining limitations.
 CI runs `python hardware/enclosure/scripts/check_cad_artifacts.py` to detect
 stale sources, exports, compatibility copies or failed recorded checks; it
 does not rerun the CAD kernel. In this
-build, eight single-solid parts pass, all STEP volumes round-trip, and all STL
+build, nine single-solid parts pass, all STEP volumes round-trip, and all STL
 edges have two incident facets. Strip travel was checked at 81 positions and
 pouch travel at 96 positions for **each** of the enclosure and sled, with zero
 modeled collision volume. This is discrete mechanical verification, not

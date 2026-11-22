@@ -25,7 +25,7 @@ def main():
         assert digest(out/path) == sha, f"CAD output differs from validated file: {path}"
     for destination,source in r["compatibility_copies"].items():
         assert digest(ROOT/destination) == digest(out/source), f"Stale compatibility export: {destination}"
-    required = {"Enclosure Base","Enclosure Lid","Test Sled","Alignment Gauge"}
+    required = {"Enclosure Base","Tunnel Cover","Enclosure Lid","Test Sled","Alignment Gauge"}
     required.update(f"Optical Module d{ap:.1f}" for ap in c["apertures_mm"])
     assert set(r["parts"]) == required
     for name,part in r["parts"].items():

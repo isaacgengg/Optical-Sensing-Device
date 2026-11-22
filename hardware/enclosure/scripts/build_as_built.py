@@ -28,6 +28,14 @@ PY0, PY1 = BoardsY0-POCKET_CLEAR, BoardsY1+POCKET_CLEAR
 MX0, MX1 = PX0-WALL-FIT, PX1+WALL+FIT
 MY0, MY1 = PY0-WALL-FIT, PY1+WALL+FIT
 VIEW_EXTRA, LED_D, SLOT_LEN, SLOT_HALF_X, WEB = .4, 1.8, 2.2, 1.5, .8
+# Strip passage: headroom over the groove wherever something roofs it, and an entry
+# funnel through the -Y wall. A 0.6-0.7 mm gap closes up when printed.
+STRIP_HEADROOM, ENTRY_HALF, ENTRY_TOP = 1.2, 4.0, 1.8
+MOD_RIM = 2.0  # module locating rim height/width in the base
+# Tunnel Cover: separate flat-printed roof + low shelf over the pouch tunnel, screwed to
+# four bosses in the base (M2.5 self-tapping, pilot 2.1 mm, clearance 2.8 mm).
+COVER_Z0, COVER_T = -9.0, 1.2
+COVER_SCREWS = [(8,-2.6),(47,-2.6),(5,60.2),(47,60.2)]
 POUCH_HALF = [(0,9.03),(21.89,21.92),(34.1,25.4),(81.9,25.4),
               (86.3,23.8),(90.9,19.5),(95.25,15.15)]
 LCD_HOLES = [(29.25,72.5),(29.25,-2.5),(60.25,72.5),(60.25,-2.5)]
@@ -164,19 +172,59 @@ def base():
               (IN[0],66.5,3.5,IN[3]),(86.5,66.5,IN[2],IN[3])]:
         p = p.fuse(box(*r,FLOOR,0))
     p = p.fuse(box(MX0,MY0,MX1,MY1,FLOOR,LOW))
-    p = p.fuse(prism(outline(TIP_X,-1,POUCH_Y,2.5,x0,True),FLOOR,10.1))
-    p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,x0-2,True),FLOOR,8.9))
-    # 0.2 mm overlap below LOW joins shelf/pedestal with area, not only an
-    # edge at the tapered pouch boundary (which produces a nonmanifold STL).
-    p = p.fuse(box(44,POUCH_Y-27.9,MX0,POUCH_Y+27.9,LOW-.2,-9))
+    # Pouch tunnel walls only, up to the cover's underside. The roof and low shelf are the
+    # separate Tunnel Cover, so nothing in the base spans the ~51 mm tunnel.
+    p = p.fuse(prism(outline(TIP_X,-1,POUCH_Y,2.5,x0,True),FLOOR,COVER_Z0-FLOOR))
+    # Locating rim (as on the sled), standing on the floor wherever the pouch doesn't run:
+    # full +X and +Y sides, -Y from where the slot narrows, and a -X stop post at the +Y
+    # corner. The cover's shelf end is the main -X stop.
+    p = p.fuse(box(MX0-MOD_RIM,MY0-MOD_RIM,IN[2],MY1+MOD_RIM,FLOOR,LOW+MOD_RIM))
+    p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,x0-2,True),FLOOR,LOW+MOD_RIM+.1-FLOOR))
+    p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,x0-2,True),FLOOR,COVER_Z0-FLOOR))
+    # Entrance: open the -X wall 2 mm above the cover's underside. The cover's front lip
+    # fills it, so any sag in the wall's bridge over the entrance lands on the cover.
+    slot = prism(outline(TIP_X,-1,POUCH_Y,.5,x0-2,True),FLOOR,SPLIT-FLOOR)
+    p = p.cut(slot.intersect(box(x0-1,-10,IN[0]+.1,90,COVER_Z0,COVER_Z0+2)))
+    # No corner-post stub hanging over the tunnel.
+    p = p.cut(slot.intersect(box(IN[0]-.1,IN[1]-.1,3.6,4.35,FLOOR,.1)))
+    for x,y in COVER_SCREWS:
+        p = p.fuse(cq.Solid.makeCylinder(3,COVER_Z0-FLOOR,cq.Vector(x,y,FLOOR)))
+        p = p.cut(cq.Solid.makeCylinder(1.05,7,cq.Vector(x,y,COVER_Z0-7)))
     p = rect_cut(p,MX0,MY0,MX1,MY1,LOW,SPLIT+.1)
     gx0,gx1 = SensorX-StripW/2-.2,SensorX+StripW/2+.2
     # Insertion is now from -Y: TCS=test at the lower Y and AS=control above it.
     p = rect_cut(p,gx0,y0-1,gx1,StripStopY+.3,FLOOR-StripT-.2,FLOOR)
-    p = rect_cut(p,gx0,y0-1,gx1,IN[1]+.1,FLOOR,FLOOR+.6)
+    p = rect_cut(p,gx0,y0-1,gx1,StripStopY+.3,FLOOR,FLOOR+STRIP_HEADROOM)
+    # Funnel: 8 mm wide at the outside face, tapering ~45 deg to the groove at the inside face.
+    p = p.cut(prism([(SensorX-ENTRY_HALF,y0-1),(SensorX+ENTRY_HALF,y0-1),(SensorX+ENTRY_HALF,y0),
+                     (gx1,IN[1]+.1),(gx0,IN[1]+.1),(SensorX-ENTRY_HALF,y0)],
+                    FLOOR-StripT-.2,StripT+.2+ENTRY_TOP))
     p = rect_cut(p,23.41-6,IN[3]-.1,23.41+6,y1+.5,-9.4,-1.4)
     p = rect_cut(p,x0-1,POUCH_Y-10,8,POUCH_Y+10,BOTTOM-.5,FLOOR)
     p = rect_cut(p,x0-1,POUCH_Y-10,8,POUCH_Y+10,-9,-3)
+    return p.clean()
+
+
+def cover():
+    """Roof and low shelf of the pouch tunnel, printed top face down with no supports."""
+    x0 = OUT[0]
+    p = prism(outline(TIP_X,-1,POUCH_Y,2.5,x0,True),COVER_Z0,COVER_T)
+    for x,y in COVER_SCREWS:
+        # Ear from the tunnel roof out to the boss, kept 0.2 mm inside the base walls.
+        y0,y1 = (max(IN[1]+.2,y-3.5),1.5) if y < POUCH_Y else (POUCH_Y+27,min(IN[3]-.2,y+3.5))
+        p = p.fuse(box(x-4,y0,x+4,y1,COVER_Z0,COVER_Z0+COVER_T))
+    # Low shelf: holds the pad down just before the sensors and is the module's -X stop;
+    # 0.2 mm inside the tunnel walls.
+    shelf = box(44,POUCH_Y-27.9,MX0,POUCH_Y+27.9,LOW,COVER_Z0+.01)
+    p = p.fuse(shelf.intersect(prism(outline(TIP_X,-1,POUCH_Y,.3,x0-2,True),LOW-1,10)))
+    inner = prism(outline(TIP_X,-1,POUCH_Y,.3,x0-2,True),LOW-1,10)
+    p = p.cut(box(x0-1,-10,IN[0]+.2,90,LOW-1,0))            # base -X wall
+    p = p.fuse(inner.intersect(box(x0,-10,IN[0]+.2,90,COVER_Z0,COVER_Z0+COVER_T)))  # front lip in the wall opening
+    p = p.cut(box(MX0,MY0,MX1,MY1,LOW-1,0))                  # module
+    p = p.cut(box(IN[0]-1,IN[1]-1,3.7,4.45,LOW-1,0).cut(inner))  # corner board post
+    p = p.cut(box(x0-1,POUCH_Y-10,8,POUCH_Y+10,LOW-1,0))     # finger notch above the pouch
+    for x,y in COVER_SCREWS:
+        p = p.cut(cq.Solid.makeCylinder(1.4,4,cq.Vector(x,y,COVER_Z0-1)))
     return p.clean()
 
 
@@ -200,8 +248,12 @@ def sled():
     p = p.fuse(box(MX0-2,MY0-2,MX1+2,MY1+2,BOTTOM,LOW+2))
     p = rect_cut(p,MX0,MY0,MX1,MY1,LOW,LOW+2.1)
     p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,MX0-4,True),FLOOR,3))
-    p = rect_cut(p,MX0-2.1,POUCH_Y-25.9,MX0+.1,POUCH_Y+25.9,LOW,LOW+2.1)
+    # -X rim: cut only where the pouch slot actually runs, leaving a stop post at the +Y
+    # corner. The -Y corner sits over the slot, so it can't have one without a bridge.
+    p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,MX0-4,True),LOW,2.1)
+              .intersect(box(MX0-2.1,-1,MX0+.1,71,LOW,LOW+2.1)))
     p = rect_cut(p,SensorX-StripW/2-.2,-1,SensorX+StripW/2+.2,StripStopY+.3,FLOOR-StripT-.2,FLOOR)
+    p = rect_cut(p,SensorX-StripW/2-.2,-1,SensorX+StripW/2+.2,StripStopY+.3,FLOOR,FLOOR+STRIP_HEADROOM)
     for r in [(0,0,4,4),(86,0,90,4),(0,66,4,70),(86,66,90,70)]:
         p = p.fuse(box(*r,FLOOR,0))
     p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,-2,True),FLOOR,3))
@@ -295,7 +347,7 @@ def check_fit(parts, module, strip_shape, pouch_shape, electronics):
     for fixture in ("Enclosure Base","Test Sled"):
         fixed = parts[fixture]
         if fixture == "Enclosure Base":
-            fixed = fixed.fuse(parts["Enclosure Lid"])
+            fixed = fixed.fuse(parts["Enclosure Lid"]).fuse(parts["Tunnel Cover"])
         fixed = cq.Compound.makeCompound([fixed,module])
         for name,shape,axis,travel in [("strip",strip_shape,(0,-1,0),80),("pouch",pouch_shape,(-1,0,0),95)]:
             maximum = 0
@@ -312,12 +364,18 @@ def check_fit(parts, module, strip_shape, pouch_shape, electronics):
         if max(vol,pinvol)>1e-4:
             raise ValueError(f"Module hits {name}: {vol}, header {pinvol} mm3")
         checks[f"module/{name}"] = {"board_overlap_mm3":vol,"header_overlap_mm3":pinvol}
-    for a,b in [("Enclosure Base","Enclosure Lid")]:
+    for a,b in [("Enclosure Base","Enclosure Lid"),("Enclosure Base","Tunnel Cover"),("Tunnel Cover","Enclosure Lid")]:
         vol = parts[a].intersect(parts[b]).Volume()
         if vol>1e-4:
             raise ValueError(f"{a}/{b} interference: {vol}")
         checks[f"{a}/{b}"] = {"overlap_mm3":vol}
-    for name in ("Enclosure Base","Test Sled"):
+    for name in ("ESP32","LCD","TCS3448_test_color","AS7343_control_proxy",
+                 "TCS3448_test_color_header","AS7343_control_proxy_header"):
+        vol = parts["Tunnel Cover"].intersect(electronics[name]).Volume()
+        if vol>1e-4:
+            raise ValueError(f"Tunnel Cover hits {name}: {vol} mm3")
+        checks[f"Tunnel Cover/{name}"] = {"overlap_mm3":vol}
+    for name in ("Enclosure Base","Tunnel Cover","Test Sled"):
         vol = module.intersect(parts[name]).Volume()
         if vol>1e-4:
             raise ValueError(f"Module/{name} interference: {vol}")
@@ -365,7 +423,7 @@ def main():
                                          ROOT/"reference/ESP32.step",ROOT/"reference/LCD.step",
                                          ROOT/"reference/Header.step",
                                          ROOT/"Purchased Parts/Adafruit/6525 TCS3448 Light Color Sensor.step"]}
-    parts = {"Enclosure Base":base(),"Enclosure Lid":lid(),"Test Sled":sled(),"Alignment Gauge":gauge()}
+    parts = {"Enclosure Base":base(),"Tunnel Cover":cover(),"Enclosure Lid":lid(),"Test Sled":sled(),"Alignment Gauge":gauge()}
     report["ray_checks"] = {}
     for ap in C["apertures_mm"]:
         name = f"Optical Module d{ap:.1f}"
@@ -384,7 +442,7 @@ def main():
     assembly(args.out/"Electronics Assembly.step",electronics)
     for mode,sample in [("LFA",{"LFA Strip":strip_shape}),("Color",{"Pouch":pouch_shape})]:
         assembly(args.out/f"Enclosure {mode}.step",dict(electronics,**{
-            "Enclosure Base":parts["Enclosure Base"],"Optical Module":default,
+            "Enclosure Base":parts["Enclosure Base"],"Tunnel Cover":parts["Tunnel Cover"],"Optical Module":default,
             "Enclosure Lid":parts["Enclosure Lid"]},**sample))
         assembly(args.out/f"Test Jig {mode}.step",dict(electronics,**{
             "Test Sled":parts["Test Sled"],"Optical Module":default},**sample))

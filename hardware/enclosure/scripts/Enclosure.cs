@@ -32,6 +32,13 @@ public static class Enclosure
     const double StripW = AsBuiltLayout.StripW, StripT = AsBuiltLayout.StripT;
     const double StripTopZ = AsBuiltLayout.StripTopZ;
     const double GrooveClr = 0.2;
+    // Strip passage: headroom over the groove wherever something roofs it, and an entry funnel through the -Y wall.
+    // A 0.6-0.7 mm gap closes up when printed.
+    const double StripHeadroom = 1.2, EntryHalf = 4.0, EntryTop = 1.8;
+    // Tunnel Cover: separate flat-printed roof + low shelf over the pouch tunnel, so nothing in the base spans the
+    // ~51 mm tunnel. Screwed to four bosses in the base (M2.5 self-tapping, pilot 2.1 mm, clearance 2.8 mm).
+    const double CoverT = 1.2, ModRim = 2.0;
+    static readonly double[][] CoverScrews = { new[]{8.0, -2.6}, new[]{47.0, -2.6}, new[]{5.0, 60.2}, new[]{47.0, 60.2} };
 
     // ---------- Pouch (measured: 3.75 x 2 in, 1 in front diagonals, 0.5 in second diagonals, 0.75 in pad) ----------
     // Half-width at distance s from the bottom tip. Diagonal angles (30.5 and 15.9 deg) are from the product image.
@@ -134,6 +141,36 @@ public static class Enclosure
     static ExtrudeFeature Rect(double z, double h, double x0, double y0, double x1, double y1, PartFeatureOperationEnum op, string name)
     { return Rects(z, h, new[] { new[] { x0, y0, x1, y1 } }, op, name); }
 
+    // Clip a closed polygon to lo <= p[axis] <= hi (Sutherland-Hodgman; axis 0 = X, 1 = Y).
+    static List<double[]> Clip(List<double[]> pts, int axis, double lo, double hi)
+    {
+        foreach (var edge in new[] { new { v = lo, keepAbove = true }, new { v = hi, keepAbove = false } })
+        {
+            var outPts = new List<double[]>();
+            for (int i = 0; i < pts.Count; i++)
+            {
+                var a = pts[i]; var b = pts[(i + 1) % pts.Count];
+                bool ina = edge.keepAbove ? a[axis] >= edge.v : a[axis] <= edge.v, inb = edge.keepAbove ? b[axis] >= edge.v : b[axis] <= edge.v;
+                if (ina) outPts.Add(a);
+                if (ina != inb)
+                {
+                    double t = (edge.v - a[axis]) / (b[axis] - a[axis]);
+                    var q = new double[2]; q[axis] = edge.v; q[1 - axis] = a[1 - axis] + t * (b[1 - axis] - a[1 - axis]);
+                    outPts.Add(q);
+                }
+            }
+            pts = outPts;
+        }
+        return pts;
+    }
+
+    static ExtrudeFeature Circles(double z, double h, double[][] centres, double r, PartFeatureOperationEnum op, string name)
+    {
+        var sk = cd.Sketches.Add(Plane(z));
+        foreach (var c in centres) sk.SketchCircles.AddByCenterRadius(P2(c[0], c[1]), r / 10);
+        return Extrude(sk, h, op, name);
+    }
+
     static ExtrudeFeature Poly(double z, double h, List<double[]> pts, PartFeatureOperationEnum op, string name)
     {
         var sk = cd.Sketches.Add(Plane(z));
@@ -147,13 +184,6 @@ public static class Enclosure
             prev = l;
         }
         sk.SketchLines.AddByTwoPoints(prev.EndSketchPoint, first.StartSketchPoint);
-        return Extrude(sk, h, op, name);
-    }
-
-    static ExtrudeFeature Circles(double z, double h, double[][] centres, double r, PartFeatureOperationEnum op, string name)
-    {
-        var sk = cd.Sketches.Add(Plane(z));
-        foreach (var c in centres) sk.SketchCircles.AddByCenterRadius(P2(c[0], c[1]), r / 10);
         return Extrude(sk, h, op, name);
     }
 
@@ -242,13 +272,21 @@ public static class Enclosure
         // Pedestal under the optical module (outside the tunnel), floor up to the module's underside.
         Rect(zf, LowCeilZ - zf, ModX0, ModY0, ModX1, ModY1, J, "Module pedestal");
 
-        // Pouch tunnel: rails + ceiling shelf following the pouch outline, open through the -X wall. Tall near the
-        // entrance for the pouch's thick part, low (3 mm) from StepX on, where only the thin pad end passes.
-        Poly(zf, ShelfTopZ - zf, Outline(TipX, -1, PouchY, Clr + Rail, OutX0, true), J, "Tunnel");
-        Poly(zf, TallCeilZ - zf, Outline(TipX, -1, PouchY, Clr, OutX0 - 2, true), C, "Pouch slot");
-        double half = 25.40 + Clr + Rail;
-        // Positive-area joint to pedestal; edge-only contact here creates a nonmanifold STL.
-        Rect(LowCeilZ - 0.2, TallCeilZ - LowCeilZ + 0.2, StepX, PouchY - half, ModX0, PouchY + half, J, "Low ceiling");
+        // Pouch tunnel walls only, up to the cover's underside; the roof and low shelf are the separate Tunnel Cover.
+        var slot = Outline(TipX, -1, PouchY, Clr, OutX0 - 2, true);
+        Poly(zf, TallCeilZ - zf, Outline(TipX, -1, PouchY, Clr + Rail, OutX0, true), J, "Tunnel walls");
+        // Locating rim (as on the sled), standing on the floor wherever the pouch doesn't run: full +X and +Y sides,
+        // -Y from where the slot narrows, and a -X stop post at the +Y corner. The cover's shelf end is the main -X stop.
+        Rect(zf, LowCeilZ + ModRim - zf, ModX0 - ModRim, ModY0 - ModRim, InX1, ModY1 + ModRim, J, "Module rim");
+        Poly(zf, LowCeilZ + ModRim + 0.1 - zf, slot, C, "Pouch slot through rim");
+        Poly(zf, TallCeilZ - zf, slot, C, "Pouch slot");
+        // Entrance: open the -X wall 2 mm above the cover's underside; the cover's front lip fills it, so any sag in
+        // the wall's bridge over the entrance lands on the cover.
+        Poly(TallCeilZ, 2.0, Clip(slot, 0, OutX0 - 1, InX0 + 0.1), C, "Entrance above cover lip");
+        // No corner-post stub hanging over the tunnel.
+        Poly(zf, 0.1 - zf, Clip(Clip(slot, 0, InX0 - 0.1, 3.6), 1, InY0 - 0.1, 4.35), C, "Corner post clear of tunnel");
+        Circles(zf, TallCeilZ - zf, CoverScrews, 3.0, J, "Cover screw bosses");
+        Circles(TallCeilZ - 7, 7, CoverScrews, 1.05, C, "Cover screw pilots");
 
         // Opening where the optical module drops in; its floor (the aperture plate) is the tunnel ceiling there.
         Rect(LowCeilZ, SplitZ - LowCeilZ, ModX0, ModY0, ModX1, ModY1, C, "Module opening");
@@ -256,7 +294,11 @@ public static class Enclosure
         // LFA strip now enters from -Y, maintaining TCS=test and AS=control.
         double gx0 = SensorX - StripW / 2 - GrooveClr, gx1 = SensorX + StripW / 2 + GrooveClr, gd = StripT + GrooveClr;
         Rect(zf - gd, gd, gx0, OutY0 - 1, gx1, StripStopY + 0.3, C, "Strip groove");
-        Rect(zf, 0.6, gx0, OutY0 - 1, gx1, InY0 + 0.1, C, "Strip slot");
+        Rect(zf, StripHeadroom, gx0, OutY0 - 1, gx1, StripStopY + 0.3, C, "Strip headroom");
+        // Funnel: 8 mm wide at the outside face, tapering ~45 deg to the groove at the inside face.
+        Poly(zf - gd, gd + EntryTop, new List<double[]> {
+            new[]{SensorX - EntryHalf, OutY0 - 1}, new[]{SensorX + EntryHalf, OutY0 - 1}, new[]{SensorX + EntryHalf, OutY0},
+            new[]{gx1, InY0 + 0.1}, new[]{gx0, InY0 + 0.1}, new[]{SensorX - EntryHalf, OutY0} }, C, "Strip entry funnel");
 
         // USB opening in the +Y wall for a micro-USB plug's overmould.
         Rect(UsbZ - 4.0, 8.0, UsbX - 6.0, InY1 - 0.1, UsbX + 6.0, OutY1 + 0.5, C, "USB opening");
@@ -301,6 +343,32 @@ public static class Enclosure
     // A pocket holds both breakouts. Under them a solid black block carries, per sensor, a view bore (sensor ->
     // aperture in the floor plate, aimed at its LFA line) and an LED bore (onboard LED -> exit slot just -Y of the
     // aperture). Nothing else is open, so the sensors only see light coming back up their own view bore.
+    // Roof and low shelf of the pouch tunnel. Print top face down: no supports.
+    static void BuildCover(string path)
+    {
+        var doc = NewPart(path);
+        var J = PartFeatureOperationEnum.kJoinOperation; var C = PartFeatureOperationEnum.kCutOperation;
+        double z0 = TallCeilZ;
+        var inner = Outline(TipX, -1, PouchY, Clr - 0.2, OutX0 - 2, true);   // 0.2 mm inside the tunnel walls
+        Poly(z0, CoverT, Outline(TipX, -1, PouchY, Clr + Rail, OutX0, true), J, "Roof");
+        var ears = new List<double[]>();
+        foreach (var c in CoverScrews)
+            ears.Add(c[1] < PouchY ? new[]{c[0] - 4, Math.Max(InY0 + 0.2, c[1] - 3.5), c[0] + 4, 1.5}
+                                   : new[]{c[0] - 4, PouchY + 27, c[0] + 4, Math.Min(InY1 - 0.2, c[1] + 3.5)});
+        Rects(z0, CoverT, ears.ToArray(), J, "Screw ears");
+        // Low shelf: holds the pad down just before the sensors and is the module's -X stop.
+        Poly(LowCeilZ, z0 - LowCeilZ, Clip(Clip(inner, 0, StepX, ModX0), 1, PouchY - 27.9, PouchY + 27.9), J, "Low shelf");
+        Rect(LowCeilZ - 1, 20, OutX0 - 1, -10, InX0 + 0.2, 90, C, "Clear base -X wall");
+        Poly(z0, CoverT, Clip(inner, 0, OutX0, InX0 + 0.2), J, "Front lip");
+        Rect(LowCeilZ - 1, 20, ModX0, ModY0, ModX1, ModY1, C, "Module clearance");
+        Rect(LowCeilZ - 1, 20, InX0 - 1, InY0 - 1, 3.7, 4.45, C, "Corner post clearance");
+        Poly(z0, CoverT, Clip(Clip(inner, 0, InX0 + 0.2, 3.7), 1, InY0 - 1, 4.45), J, "Roof over tunnel at corner post");
+        Rect(LowCeilZ - 1, 20, OutX0 - 1, PouchY - 10, 8, PouchY + 10, C, "Finger notch above the pouch");
+        Circles(z0 - 1, 4, CoverScrews, 1.4, C, "Screw holes");
+        Look(doc, "Black|Smooth - Black");
+        Finish(doc, path, "Pouch tunnel cover: roof and low shelf, screwed to the base with 4 x M2.5 self-tapping screws");
+    }
+
     static void BuildModule(string path, double apD)
     {
         var doc = NewPart(path);
@@ -407,12 +475,14 @@ public static class Enclosure
         System.IO.Directory.CreateDirectory(encl); System.IO.Directory.CreateDirectory(pouchDir);
         string basePath = System.IO.Path.Combine(encl, "Enclosure Base.ipt");
         string lidPath = System.IO.Path.Combine(encl, "Enclosure Lid.ipt");
+        string coverPath = System.IO.Path.Combine(encl, "Tunnel Cover.ipt");
         string modulePath = System.IO.Path.Combine(encl, "Optical Module.ipt");
         string pouchPath = System.IO.Path.Combine(pouchDir, "MobileDetect Pouch.ipt");
         string asmPath = System.IO.Path.Combine(root, "Enclosure Assembly.iam");
         if (System.IO.File.Exists(asmPath)) throw new Exception("Refusing to overwrite " + asmPath);
 
         BuildBase(basePath);
+        BuildCover(coverPath);
         BuildModule(modulePath, ApertureD);
         BuildLid(lidPath);
         if (!System.IO.File.Exists(pouchPath)) BuildPouch(pouchPath);
@@ -421,7 +491,7 @@ public static class Enclosure
         var asm = (AssemblyDocument)app.Documents.Add(DocumentTypeEnum.kAssemblyDocumentObject, atpl, true);
         var occs = asm.ComponentDefinition.Occurrences;
         var id = tg.CreateMatrix();
-        foreach (var p in new[] { System.IO.Path.Combine(root, "Electronics Assembly.iam"), basePath, modulePath, lidPath })
+        foreach (var p in new[] { System.IO.Path.Combine(root, "Electronics Assembly.iam"), basePath, coverPath, modulePath, lidPath })
             occs.Add(p, id).Grounded = true;
         AddPouch(asm, root);
         asm.PropertySets["Design Tracking Properties"]["Description"].Value = "Reader enclosure with electronics, a pouch and an LFA strip inserted";
@@ -463,9 +533,11 @@ public static class Enclosure
         Rect(LowCeilZ, rim + 0.1, ModX0, ModY0, ModX1, ModY1, C, "Module pocket");
         Poly(zf, LowH, Outline(TipX, -1, PouchY, Clr, sx0 - 2, true), C, "Pouch slot");
         // No rim over the pouch slot on the -X side: it would be a ~50 mm unsupported bridge. The other three sides locate the module.
-        Rect(LowCeilZ, rim + 0.1, sx0 - 0.1, PouchY - 25.40 - Clr, ModX0 + 0.1, PouchY + 25.40 + Clr, C, "Rim gap over slot");
+        // Cut it only where the slot actually runs, leaving a stop post at the +Y corner (the -Y corner is over the slot).
+        Poly(LowCeilZ, rim + 0.1, Clip(Outline(TipX, -1, PouchY, Clr, sx0 - 2, true), 0, sx0 - 0.1, ModX0 + 0.1), C, "Rim gap over slot");
         double gx0 = SensorX - StripW / 2 - GrooveClr, gx1 = SensorX + StripW / 2 + GrooveClr, gd = StripT + GrooveClr;
         Rect(zf - gd, gd, gx0, -1, gx1, StripStopY + 0.3, C, "Strip groove");
+        Rect(zf, StripHeadroom, gx0, -1, gx1, StripStopY + 0.3, C, "Strip headroom");
         Rects(zf, -zf, new[] { new[]{0.0, 0.0, 4.0, 4.0}, new[]{86.0, 0.0, 90.0, 4.0}, new[]{0.0, 66.0, 4.0, 70.0}, new[]{86.0, 66.0, 90.0, 70.0} }, J, "Board posts");
         Poly(zf, LowH, Outline(TipX, -1, PouchY, Clr, -2, true), C, "Pouch clearance through posts");
 
