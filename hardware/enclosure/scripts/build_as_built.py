@@ -19,7 +19,14 @@ from layout import ROOT, CONFIG, csharp, dimensions
 C, D = dimensions()
 globals().update(D)
 FLOOR, LOW, PLATE, BLOCK, CHAMBER, AP_TOP = -17.9, -14.9, -13.4, -5.0, -12.0, -10.5
-PAD_TOP, BOTTOM, SPLIT, LID_TOP = -15.9, -19.9, 4.0, 29.3
+# Pouch (measured Nov 2026): white reading square flush with the flat face, which
+# faces up to the sensors. The bump (ampoules) is on the OTHER face, pointing down,
+# starting 1.25" from the white-square (leading) end and ~9 mm tall. Its shape is
+# modelled as a full-width envelope from there to the tail.
+BUMP_S0, BUMP_H = 31.75, 9.0
+POCKET_D, POCKET_LIP = 10.0, 2.0   # floor pocket for the bump; 45 deg lip at its end
+PAD_TOP, SPLIT, LID_TOP = FLOOR+.8, 4.0, 29.3
+BOTTOM = FLOOR-POCKET_D-2.0
 WALL, POCKET_CLEAR, FIT = 2.0, 0.5, 0.2
 IN = (-1.5, -6.0, 91.0, 79.5)
 OUT = (IN[0]-WALL, IN[1]-WALL, IN[2]+WALL, IN[3]+WALL)
@@ -28,13 +35,14 @@ PY0, PY1 = BoardsY0-POCKET_CLEAR, BoardsY1+POCKET_CLEAR
 MX0, MX1 = PX0-WALL-FIT, PX1+WALL+FIT
 MY0, MY1 = PY0-WALL-FIT, PY1+WALL+FIT
 VIEW_EXTRA, LED_D, SLOT_LEN, SLOT_HALF_X, WEB = .4, 1.8, 2.2, 1.5, .8
-# Strip passage: headroom over the groove wherever something roofs it, and an entry
-# funnel through the -Y wall. A 0.6-0.7 mm gap closes up when printed.
+CHAMBER_TOP_HALF = 1.7   # half-width of the flat chamber ceiling; LED slot is +-1.5
+# Strip passage: an entry funnel with headroom through the -Y wall (the only place
+# anything spans the strip); inside, open slots. A 0.6-0.7 mm gap closes up when printed.
 STRIP_HEADROOM, ENTRY_HALF, ENTRY_TOP = 1.2, 4.0, 1.8
 MOD_RIM = 2.0  # module locating rim height/width in the base
 # Tunnel Cover: separate flat-printed roof + low shelf over the pouch tunnel, screwed to
 # four bosses in the base (M2.5 self-tapping, pilot 2.1 mm, clearance 2.8 mm).
-COVER_Z0, COVER_T = -9.0, 1.2
+COVER_Z0, COVER_T = LOW, 1.2   # tunnel roof = module underside; only flat film rides above the floor
 COVER_SCREWS = [(8,-2.6),(47,-2.6),(5,60.2),(47,60.2)]
 POUCH_HALF = [(0,9.03),(21.89,21.92),(34.1,25.4),(81.9,25.4),
               (86.3,23.8),(90.9,19.5),(95.25,15.15)]
@@ -47,6 +55,7 @@ def view_y(sy, target, z):
 
 POUCH_Y = view_y(TcsY, TLineY, PAD_TOP)
 TIP_X = SensorX + 12.15
+POCKET_END = TIP_X-BUMP_S0+.3   # bump front at full insertion + 0.3; the pocket end is the pouch stop
 
 
 def box(x0, y0, x1, y1, z0, z1):
@@ -93,6 +102,16 @@ def axis_bore(sy, target, z0, z1, diameter):
                 (SensorX,view_y(sy,target,z1),z1),diameter)
 
 
+def read_chamber(y0, y1):
+    """Read chamber, open at the module's underside. Its long sides slope at 45 deg so the
+    ceiling (aperture plate) is a 3.4 mm span that prints, bottom down, without support."""
+    w0, w1 = (ChamberX1-ChamberX0)/2, CHAMBER_TOP_HALF
+    zs = CHAMBER-(w0-w1)           # where the 45 deg slope starts
+    pts = [(SensorX-w0,LOW-.1),(SensorX+w0,LOW-.1),(SensorX+w0,zs),(SensorX+w1,CHAMBER),
+           (SensorX-w1,CHAMBER),(SensorX-w0,zs)]
+    return cq.Workplane("XZ").polyline(pts).close().extrude(-(y1-y0)).val().translate((0,y0,0))
+
+
 def optical_module(aperture):
     p = box(PX0-WALL,PY0-WALL,PX1+WALL,PY1+WALL,LOW,-.2)
     p = rect_cut(p,PX0,PY0,PX1,PY1,PLATE,0)
@@ -100,11 +119,13 @@ def optical_module(aperture):
     for header in (TcsHeaderY,AsHeaderY):
         p = rect_cut(p,BlockX0-.5,header-1.57,BlockX1+.5,header+1.57,-5.9,BLOCK+.1)
     for y0,y1 in [(ChamberY0,ChamberSplitY-.5),(ChamberSplitY+.5,ChamberY1)]:
-        p = rect_cut(p,ChamberX0,y0,ChamberX1,y1,LOW,CHAMBER)
+        p = p.cut(read_chamber(y0,y1))
     metrics = []
     for tag,sy,target,led in [("TCS3448",TcsY,TLineY,TcsLedY),("AS7343",AsY,CLineY,AsLedY)]:
         cosine = 1/math.sqrt(1+((target-sy)/(StripTopZ-SensorFaceZ))**2)
-        ap = axis_bore(sy,target,CHAMBER-.1,AP_TOP+.1,aperture)
+        # Start 1 mm into the (open) chamber: the cut is tilted, so starting just below the
+        # ceiling left a 0-0.16 mm skin over about half the aperture.
+        ap = axis_bore(sy,target,CHAMBER-1,AP_TOP+.1,aperture)
         view = axis_bore(sy,target,AP_TOP,BLOCK+.5,aperture+VIEW_EXTRA)
         # The photographed LEDs are on the -Y side of their sensors.
         ap_min = min(view_y(sy,target,AP_TOP),view_y(sy,target,CHAMBER))-aperture/2/cosine
@@ -112,7 +133,13 @@ def optical_module(aperture):
         slot0 = slot1-SLOT_LEN
         slot_c = (slot0+slot1)/2
         slot = box(SensorX-SLOT_HALF_X,slot0,SensorX+SLOT_HALF_X,slot1,CHAMBER,AP_TOP)
+        # The bore's tilted end cap stopped part of it short of the slot. Square the end off
+        # at the slot ceiling over the slot, but stop 0.3 mm short of the slot's aperture-side
+        # edge so the LED bore stays as far from the view bore as the slot already is.
+        u = cq.Vector(0,slot_c-led,AP_TOP-LedZ).normalized()
         led_bore = bore((SensorX,led,LedZ),(SensorX,slot_c,AP_TOP),LED_D)
+        led_bore = led_bore.fuse(bore((SensorX,led,LedZ),(SensorX,slot_c+1.5*u.y,AP_TOP+1.5*u.z),LED_D)
+                                 .intersect(box(SensorX-5,led-20,SensorX+5,slot1-.3,AP_TOP,LedZ+5)))
         # CAD-kernel distance and Boolean overlap in the optical block, not only a centreline estimate.
         block_region = box(BlockX0,BoardsY0,BlockX1,BoardsY1,CHAMBER,BLOCK)
         view_cut = ap.fuse(view).intersect(block_region)
@@ -163,6 +190,18 @@ def check_optical_rays(module):
     return checks
 
 
+def bump_pocket():
+    """Full-width floor pocket for the downward bump, open through the entrance."""
+    lane = prism(outline(TIP_X,-1,POUCH_Y,.5,OUT[0]-2,True),FLOOR-POCKET_D-1,POCKET_D+2)
+    p = lane.intersect(box(OUT[0]-3,-30,POCKET_END,120,FLOOR-POCKET_D,FLOOR+.01))
+    # 45 deg lip on the pocket's far edge: the flat leading end rides up onto the
+    # floor; the bump's front face meets the vertical part below it and stops.
+    lip = (cq.Workplane("XZ").polyline([(POCKET_END,FLOOR-POCKET_LIP),(POCKET_END,FLOOR+.01),
+                                         (POCKET_END+POCKET_LIP,FLOOR+.01)]).close()
+           .extrude(-200).val().translate((0,-50,0)))
+    return p.fuse(lip.intersect(lane))
+
+
 def base():
     x0,y0,x1,y1 = OUT
     p = box(x0,y0,x1,y1,BOTTOM,SPLIT)
@@ -194,33 +233,35 @@ def base():
     gx0,gx1 = SensorX-StripW/2-.2,SensorX+StripW/2+.2
     # Insertion is now from -Y: TCS=test at the lower Y and AS=control above it.
     p = rect_cut(p,gx0,y0-1,gx1,StripStopY+.3,FLOOR-StripT-.2,FLOOR)
-    p = rect_cut(p,gx0,y0-1,gx1,StripStopY+.3,FLOOR,FLOOR+STRIP_HEADROOM)
+    p = rect_cut(p,gx0,y0-1,gx1,IN[1]+.1,FLOOR,FLOOR+STRIP_HEADROOM)
+    # Inside, nothing spans the strip: walls it crosses get an open slot down to the floor.
+    p = rect_cut(p,gx0,IN[1],gx1,StripStopY+.3,FLOOR,LOW+MOD_RIM+.1)
+    # No -Y rim on the -X side of the strip slot: there the pouch slot's angled edge leaves
+    # only a <0.3 mm wedge of it on top of the tunnel wall.
+    p = rect_cut(p,MX0-MOD_RIM-.1,MY0-MOD_RIM-.1,gx1,MY0,LOW,LOW+MOD_RIM+.1)
     # Funnel: 8 mm wide at the outside face, tapering ~45 deg to the groove at the inside face.
     p = p.cut(prism([(SensorX-ENTRY_HALF,y0-1),(SensorX+ENTRY_HALF,y0-1),(SensorX+ENTRY_HALF,y0),
                      (gx1,IN[1]+.1),(gx0,IN[1]+.1),(SensorX-ENTRY_HALF,y0)],
                     FLOOR-StripT-.2,StripT+.2+ENTRY_TOP))
     p = rect_cut(p,23.41-6,IN[3]-.1,23.41+6,y1+.5,-9.4,-1.4)
     p = rect_cut(p,x0-1,POUCH_Y-10,8,POUCH_Y+10,BOTTOM-.5,FLOOR)
-    p = rect_cut(p,x0-1,POUCH_Y-10,8,POUCH_Y+10,-9,-3)
+    p = rect_cut(p,x0-1,POUCH_Y-10,8,POUCH_Y+10,COVER_Z0,COVER_Z0+6)
+    p = p.cut(bump_pocket())
     return p.clean()
 
 
 def cover():
-    """Roof and low shelf of the pouch tunnel, printed top face down with no supports."""
+    """Flat roof of the pouch tunnel (3 mm above the floor); prints flat, no supports."""
     x0 = OUT[0]
     p = prism(outline(TIP_X,-1,POUCH_Y,2.5,x0,True),COVER_Z0,COVER_T)
     for x,y in COVER_SCREWS:
         # Ear from the tunnel roof out to the boss, kept 0.2 mm inside the base walls.
         y0,y1 = (max(IN[1]+.2,y-3.5),1.5) if y < POUCH_Y else (POUCH_Y+27,min(IN[3]-.2,y+3.5))
         p = p.fuse(box(x-4,y0,x+4,y1,COVER_Z0,COVER_Z0+COVER_T))
-    # Low shelf: holds the pad down just before the sensors and is the module's -X stop;
-    # 0.2 mm inside the tunnel walls.
-    shelf = box(44,POUCH_Y-27.9,MX0,POUCH_Y+27.9,LOW,COVER_Z0+.01)
-    p = p.fuse(shelf.intersect(prism(outline(TIP_X,-1,POUCH_Y,.3,x0-2,True),LOW-1,10)))
     inner = prism(outline(TIP_X,-1,POUCH_Y,.3,x0-2,True),LOW-1,10)
     p = p.cut(box(x0-1,-10,IN[0]+.2,90,LOW-1,0))            # base -X wall
     p = p.fuse(inner.intersect(box(x0,-10,IN[0]+.2,90,COVER_Z0,COVER_Z0+COVER_T)))  # front lip in the wall opening
-    p = p.cut(box(MX0,MY0,MX1,MY1,LOW-1,0))                  # module
+    p = p.cut(box(MX0-MOD_RIM-.2,-30,200,200,LOW-1,0))      # module and its rim
     p = p.cut(box(IN[0]-1,IN[1]-1,3.7,4.45,LOW-1,0).cut(inner))  # corner board post
     p = p.cut(box(x0-1,POUCH_Y-10,8,POUCH_Y+10,LOW-1,0))     # finger notch above the pouch
     for x,y in COVER_SCREWS:
@@ -250,13 +291,18 @@ def sled():
     p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,MX0-4,True),FLOOR,3))
     # -X rim: cut only where the pouch slot actually runs, leaving a stop post at the +Y
     # corner. The -Y corner sits over the slot, so it can't have one without a bridge.
-    p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,MX0-4,True),LOW,2.1)
-              .intersect(box(MX0-2.1,-1,MX0+.1,71,LOW,LOW+2.1)))
+    # No rim anywhere over the slot (it would hang there), leaving a -X stop post at the +Y
+    # corner. The -Y corner sits over the slot, so it can't have one without a bridge.
+    p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,MX0-4,True),LOW,2.1))
     p = rect_cut(p,SensorX-StripW/2-.2,-1,SensorX+StripW/2+.2,StripStopY+.3,FLOOR-StripT-.2,FLOOR)
-    p = rect_cut(p,SensorX-StripW/2-.2,-1,SensorX+StripW/2+.2,StripStopY+.3,FLOOR,FLOOR+STRIP_HEADROOM)
+    # Open slot through everything the strip crosses: nothing spans it.
+    p = rect_cut(p,SensorX-StripW/2-.2,-1,SensorX+StripW/2+.2,StripStopY+.3,FLOOR,LOW+2.1)
+    # Between the strip slot and the pouch slot's angled edge only a thin wedge would remain.
+    p = rect_cut(p,MX0-2.1,MY0-2.1,SensorX+StripW/2+.2,MY0,FLOOR,LOW+2.1)
     for r in [(0,0,4,4),(86,0,90,4),(0,66,4,70),(86,66,90,70)]:
         p = p.fuse(box(*r,FLOOR,0))
     p = p.cut(prism(outline(TIP_X,-1,POUCH_Y,.5,-2,True),FLOOR,3))
+    p = p.cut(bump_pocket())
     return p.clean()
 
 
@@ -284,9 +330,9 @@ def strip():
 
 
 def pouch():
-    p = prism(outline(TIP_X,-1,POUCH_Y,0),FLOOR,.8)
-    p = p.fuse(box(TIP_X-21.67,POUCH_Y-9.525,TIP_X-2.62,POUCH_Y+9.525,FLOOR+.8,PAD_TOP))
-    return p.fuse(box(TIP_X-68,POUCH_Y-18,TIP_X-42,POUCH_Y+18,FLOOR+.8,FLOOR+7.9)).clean()
+    p = prism(outline(TIP_X,-1,POUCH_Y,0),FLOOR,.8)   # white square flush on the top face
+    bump = prism(outline(TIP_X,-1,POUCH_Y,0),FLOOR-BUMP_H,BUMP_H+.01)
+    return p.fuse(bump.intersect(box(TIP_X-100,-30,TIP_X-BUMP_S0,120,FLOOR-BUMP_H-1,FLOOR+1))).clean()
 
 
 def load_electronics():

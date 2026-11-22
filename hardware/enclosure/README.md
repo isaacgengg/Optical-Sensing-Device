@@ -42,33 +42,50 @@ physical fit and the Windows/Inventor rebuild.
 | Sources / outputs | Inventor-only generation | Shared JSON → generated C# constants; CadQuery generator, alignment gauge, STEP/STL, checks and diagrams |
 | Firmware | TCS test/color; AS control | Same roles, addresses, GPIOs and channel ordering; no firmware source changed |
 
-## Print fixes after the first print (November 22, 2026)
+## Print fixes after the first prints (November 22, 2026)
 
 The first printed base came out with the LFA strip entry and the pouch tunnel
-filled in. The STLs had both openings; they were too small or too
-unsupported to survive printing.
+filled in, and the first optical module came out with its read chambers full
+of support. The STLs had the openings; they were too small or too unsupported
+to survive printing. The real pouch also turned out to carry its bump on the
+opposite face from the white square.
 
 | Problem | Fix |
 |---|---|
 | Strip entry was a 3.6 × 1.3 mm slit in the −Y wall, which closed up | 8 × 2.5 mm entry funnel tapering ~45° to the groove |
-| Strip passage only 0.7 mm tall where something roofs the groove (base and sled) | 1.2 mm headroom above the groove along its whole length; narrowest point now 1.9 mm |
-| Pouch tunnel roof (~51 mm flat span) and low shelf (3 mm above the floor) needed unremovable support | Roof and shelf moved to a separate **Tunnel Cover**; the base keeps only the tunnel walls |
-| Optical module only located on one side in the base | 2 mm locating rim (+X, +Y, −Y where the slot narrows, −X corner post); the cover's shelf end is the main −X stop |
-| Sled rim open on the whole −X side | Stop post at the −X/+Y corner, outside the pouch slot |
+| Strip groove roofed over (0.7 mm gap) where walls cross it, in base and sled | Open slot through every wall the strip crosses; only the outer-wall funnel spans it |
+| Pouch tunnel roof (~51 mm flat span) needed unremovable support | Roof moved to a separate flat **Tunnel Cover** plate; the base keeps only the tunnel walls |
+| **Pouch bump is underneath**, not beside the white square | Pouch modelled flat side up (white square flush) with a 9 mm bump from 31.75 mm behind the tip to the tail; full-width **10 mm floor pocket** in base and sled, open through the entrance, with a 45° lip; the pocket end is the pouch stop |
+| Tunnel only needs to pass 0.8 mm film now | Tunnel 3 mm tall throughout (= module underside) |
+| Optical module only located on one side in the base | 2 mm locating rim (+X, +Y, −Y beyond the strip slot, −X corner post) |
+| Sled rim hung over the pouch slot | No rim over the slot; −X stop post at the +Y corner |
+| Thin (<0.3 mm) rim wedge left beside the strip slot | Removed in base and sled |
+| Module read chambers: 8 mm flat ceilings filled with support | 45° sloped long sides; ceiling is a 3.4 mm span |
+| View aperture cut started 0.1 mm below a tilted ceiling, leaving a skin over ~half the hole | Cut starts 1 mm into the chamber; every line of sight clear |
+| LED bore's tilted end stopped part of it short of the slot | End squared off over the slot (kept 0.3 mm from the aperture side; bore walls stay ≥0.56 mm). AS bore now ~91% open into the slot (was 61%); TCS unchanged at ~18%, limited by its 47° angle and the slot |
 
-Area facing down steeper than 45° when printed: base 3165 → 163 mm² (only
-short bridges remain), cover 0 mm².
+Area facing down steeper than 45° (supports off): base ~139 mm², sled ~3 mm²,
+cover 0, module ~75 mm² (3.4 mm chamber ceilings and LED slot tops). All are
+short bridges.
 
-**Tunnel Cover:** print with its flat top face on the bed. Fix it to the base
-with **4 × M2.5 × 6–8 mm self-tapping screws** (2.1 mm pilots in the base
-bosses, 2.8 mm clearance holes in the cover). Its top is 0.6 mm under the
-ESP32, the same as the old roof; check the perfboard underside has nothing
-lower than the model. The cover's front lip sits in the entrance opening, so
-any sag of the wall bridge above the entrance lands on the cover.
+**Printing:** base and sled floor down; Tunnel Cover flat; optical module with
+the chamber face down. **Turn supports off**: with supports on, the slicer
+fills the module chambers because they open onto the bed. The extra 10 mm of
+base and sled depth is solid in the model, so use normal low infill.
 
-The outer enclosure remains 96.5 × 89.5 × 49.2 mm. LCD and USB placement are
-inherited mechanical references, not newly verified against these photos.
-This revision does not add a power-bank compartment.
+**Tunnel Cover:** fix it to the base with **4 × M2.5 × 6–8 mm self-tapping
+screws** (2.1 mm pilots in the base bosses, 2.8 mm clearance holes in the
+cover). Its front lip sits in the entrance opening, so any sag of the wall
+bridge above the entrance lands on the cover.
+
+**Pouch:** insert flat side up (white square up), bump down, tip first from
+−X. The bump height (~9 mm) is a rough measurement; the pocket clears up to
+about 9.8 mm.
+
+The outer enclosure is now 96.5 × 89.5 × 59.2 mm (was 49.2 mm; the pouch
+pocket adds 10 mm). LCD and USB placement are inherited mechanical
+references, not newly verified against these photos. This revision does not
+add a power-bank compartment.
 
 ## Coordinates and uncertainty
 
@@ -98,7 +115,7 @@ targets, divider, strip stop and pouch alignment from it. Nominal values:
 | Sensor face Z | −4.75 | −4.75 |
 | LED face Z | −4.35 | −4.35 |
 
-Board back Z=−2.5, strip top Z=−18, pouch-pad top Z=−15.9 are inherited
+Board back Z=−2.5 and strip top Z=−18 are inherited; the pouch's white square (flush) is at Z=−17.1
 assumptions. AS still uses the TCS vendor model as a mechanical proxy; check
 its actual component heights. The neutral assemblies omit copper/mask and
 very small passives for file size and show an outline-only perfboard. Full
@@ -138,16 +155,18 @@ rejection of glare. Bench-test those properties before choosing an aperture.
    not sensor-centre accuracy or standoff height.
 2. Print `Test Sled.stl` and `Optical Module d1.6.stl` first. The other modules
    have 1.2, 2.0 and 2.5 mm view apertures. Use opaque matte black material for
-   the module; inspect bores and chamber roofs in the slicer. Use a process
-   that resolves the roughly 0.56 mm wall and small bores; do not assume
-   support-free printing or that nominal aperture size equals printed size.
-   STL coordinates preserve the CAD frame: place the part's underside on the
-   build plate. Inspect and gauge each aperture after printing.
+   the module, chamber face down and supports off; inspect bores and chamber
+   ceilings in the slicer. Use a process that resolves the roughly 0.56 mm
+   wall between the TCS LED and view bores and the small bores; do not assume
+   nominal aperture size equals printed size. STL coordinates preserve the
+   CAD frame: place the part's underside on the build plate. Inspect and
+   gauge each aperture after printing.
 3. Dry-fit without forcing the sensor boards. Confirm clearance at headers,
    STEMMA connectors, sensor faces and LEDs. Check board tilt and spacer height.
 4. Insert an LFA strip from the **−Y side**, with the inherited testing tip
    pointing +Y. At the stop, confirm T is in TCS's view and C in AS's view.
-   The color pouch still inserts tip-first from −X. Use one sample at a time.
+   The color pouch inserts tip-first from −X, white square up and bump down.
+   Use one sample at a time.
 5. Verify wiring by **silkscreen pin names**, not old row numbers. See
    [WIRING.md](../WIRING.md). Board rotation does not swap I2C addresses or
    the firmware's spectral channels.

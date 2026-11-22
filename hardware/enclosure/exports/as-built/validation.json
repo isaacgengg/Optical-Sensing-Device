@@ -7,33 +7,33 @@
     "Enclosure Base": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 40463.23886692701,
+      "volume_mm3": 95457.10131164159,
       "bounds_mm": [
-        -3.5000001000000145,
+        -3.500000100000008,
         -8.000000100000015,
-        -19.900000100000007,
+        -29.900000100000007,
         93.00000010000001,
         81.50000010000001,
         4.000000100000008
       ],
-      "step_volume_error_mm3": 1.3969838619232178e-09,
-      "triangles": 8376,
+      "step_volume_error_mm3": 7.275957614183426e-11,
+      "triangles": 8384,
       "nonmanifold_edges": 0
     },
     "Tunnel Cover": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 8210.940801978386,
+      "volume_mm3": 3870.1401223592493,
       "bounds_mm": [
         -3.500000100000016,
         -5.800000100000016,
-        -14.900000100000007,
-        79.65032144022281,
+        -14.900108890526644,
+        55.40000010000001,
         63.70000010000002,
-        -7.799891109473356
+        -13.699891109473358
       ],
-      "step_volume_error_mm3": 2.710294211283326e-10,
-      "triangles": 4196,
+      "step_volume_error_mm3": 5.1386450650170445e-11,
+      "triangles": 4164,
       "nonmanifold_edges": 0
     },
     "Enclosure Lid": {
@@ -55,17 +55,17 @@
     "Test Sled": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 15852.988426873408,
+      "volume_mm3": 51024.49570305076,
       "bounds_mm": [
-        -1.0000002009718347e-07,
-        -1.0000002009718347e-07,
-        -19.900000100000014,
+        -1.0000000794410928e-07,
+        -1.0000001421085471e-07,
+        -29.900000100000014,
         90.40000010000003,
-        70.00000010000002,
-        1.0000000355271367e-07
+        70.00000010000001,
+        1.000000044408921e-07
       ],
-      "step_volume_error_mm3": 2.1645973902195692e-10,
-      "triangles": 166,
+      "step_volume_error_mm3": 3.710738383233547e-10,
+      "triangles": 180,
       "nonmanifold_edges": 0
     },
     "Alignment Gauge": {
@@ -87,7 +87,7 @@
     "Optical Module d1.2": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 9005.60554016046,
+      "volume_mm3": 9126.83136501148,
       "bounds_mm": [
         57.79999989999998,
         13.228999899999984,
@@ -96,14 +96,14 @@
         55.009000100000016,
         -0.1999998999999834
       ],
-      "step_volume_error_mm3": 7.490598363801837e-09,
-      "triangles": 6692,
+      "step_volume_error_mm3": 2.1228697733022273e-07,
+      "triangles": 6750,
       "nonmanifold_edges": 0
     },
     "Optical Module d1.6": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 8990.223460077552,
+      "volume_mm3": 9111.250697884485,
       "bounds_mm": [
         57.79999989999998,
         13.228999899999984,
@@ -112,14 +112,14 @@
         55.009000100000016,
         -0.1999998999999834
       ],
-      "step_volume_error_mm3": 3.6833807826042175e-07,
-      "triangles": 6658,
+      "step_volume_error_mm3": 1.7240563465747982e-07,
+      "triangles": 6736,
       "nonmanifold_edges": 0
     },
     "Optical Module d2.0": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 8971.166324941898,
+      "volume_mm3": 9092.103654931117,
       "bounds_mm": [
         57.79999989999998,
         13.228999899999984,
@@ -128,14 +128,14 @@
         55.009000100000016,
         -0.1999998999999834
       ],
-      "step_volume_error_mm3": 3.793720679823309e-07,
-      "triangles": 6690,
+      "step_volume_error_mm3": 1.83459633262828e-07,
+      "triangles": 6762,
       "nonmanifold_edges": 0
     },
     "Optical Module d2.5": {
       "valid": true,
       "solids": 1,
-      "volume_mm3": 8942.208908634717,
+      "volume_mm3": 9063.311074872066,
       "bounds_mm": [
         57.79999989999998,
         13.228999899999984,
@@ -144,8 +144,8 @@
         55.009000100000016,
         -0.1999998999999834
       ],
-      "step_volume_error_mm3": 6.517439032904804e-09,
-      "triangles": 6702,
+      "step_volume_error_mm3": 9.133145795203745e-09,
+      "triangles": 6720,
       "nonmanifold_edges": 0
     }
   },
@@ -154,7 +154,7 @@
       {
         "sensor": "TCS3448",
         "line_y": 29.5,
-        "view_at_pad_y": 28.786792452830188,
+        "view_at_pad_y": 29.194339622641508,
         "led_y": 17.634,
         "slot_y": [
           23.31917123158536,
@@ -167,28 +167,28 @@
           32.801658472044465
         ],
         "pad_envelope_y": [
-          25.503768330040643,
-          30.25278793788378
+          26.17595205264227,
+          31.709285385975598
         ]
       },
       {
         "sensor": "AS7343",
         "line_y": 39.5,
-        "view_at_pad_y": 40.21320754716981,
+        "view_at_pad_y": 39.80566037735849,
         "led_y": 36.634,
         "slot_y": [
           37.904076891962724,
           40.10407689196273
         ],
-        "minimum_bore_gap_mm": 0.8315677397106569,
+        "minimum_bore_gap_mm": 0.7999999999999972,
         "bore_overlap_mm3": 0.0,
         "strip_envelope_y": [
           37.80217641507075,
           43.92374504252173
         ],
         "pad_envelope_y": [
-          37.837841581982936,
-          42.586861189826074
+          37.81746148660454,
+          43.350794819937875
         ]
       }
     ],
@@ -196,7 +196,7 @@
       {
         "sensor": "TCS3448",
         "line_y": 29.5,
-        "view_at_pad_y": 28.786792452830188,
+        "view_at_pad_y": 29.194339622641508,
         "led_y": 17.634,
         "slot_y": [
           23.107951579220735,
@@ -209,28 +209,28 @@
           32.42477634723699
         ],
         "pad_envelope_y": [
-          25.18486807058817,
-          29.933887678431304
+          25.823919298701224,
+          31.35725263203455
         ]
       },
       {
         "sensor": "AS7343",
         "line_y": 39.5,
-        "view_at_pad_y": 40.21320754716981,
+        "view_at_pad_y": 39.80566037735849,
         "led_y": 36.634,
         "slot_y": [
           37.6928572395981,
           39.8928572395981
         ],
-        "minimum_bore_gap_mm": 0.8534110743311913,
+        "minimum_bore_gap_mm": 0.7999999999999972,
         "bore_overlap_mm3": 0.0,
         "strip_envelope_y": [
           37.425294290263274,
           43.54686291771426
         ],
         "pad_envelope_y": [
-          37.51894132253046,
-          42.267960930373604
+          37.4654287326635,
+          42.99876206599683
         ]
       }
     ],
@@ -238,7 +238,7 @@
       {
         "sensor": "TCS3448",
         "line_y": 29.5,
-        "view_at_pad_y": 28.786792452830188,
+        "view_at_pad_y": 29.194339622641508,
         "led_y": 17.634,
         "slot_y": [
           22.89673192685611,
@@ -251,28 +251,28 @@
           32.04789422242953
         ],
         "pad_envelope_y": [
-          24.865967811135697,
-          29.614987418978828
+          25.47188654476018,
+          31.00521987809351
         ]
       },
       {
         "sensor": "AS7343",
         "line_y": 39.5,
-        "view_at_pad_y": 40.21320754716981,
+        "view_at_pad_y": 39.80566037735849,
         "led_y": 36.634,
         "slot_y": [
           37.481637587233465,
           39.68163758723347
         ],
-        "minimum_bore_gap_mm": 0.87525440895174,
+        "minimum_bore_gap_mm": 0.7999999999999972,
         "bore_overlap_mm3": 0.0,
         "strip_envelope_y": [
           37.048412165455794,
           43.16998079290677
         ],
         "pad_envelope_y": [
-          37.200041063077975,
-          41.949060670921114
+          37.113395978722444,
+          42.646729312055776
         ]
       }
     ],
@@ -280,7 +280,7 @@
       {
         "sensor": "TCS3448",
         "line_y": 29.5,
-        "view_at_pad_y": 28.786792452830188,
+        "view_at_pad_y": 29.194339622641508,
         "led_y": 17.634,
         "slot_y": [
           22.632707361400325,
@@ -293,28 +293,28 @@
           31.576791566420184
         ],
         "pad_envelope_y": [
-          24.467342486820097,
-          29.216362094663232
+          25.031845602333874,
+          30.565178935667205
         ]
       },
       {
         "sensor": "AS7343",
         "line_y": 39.5,
-        "view_at_pad_y": 40.21320754716981,
+        "view_at_pad_y": 39.80566037735849,
         "led_y": 36.634,
         "slot_y": [
           37.21761302177769,
           39.41761302177769
         ],
-        "minimum_bore_gap_mm": 0.9025585772274027,
+        "minimum_bore_gap_mm": 0.79999999999999,
         "bore_overlap_mm3": 0.0,
         "strip_envelope_y": [
           36.577309509446465,
           42.69887813689745
         ],
         "pad_envelope_y": [
-          36.801415738762394,
-          41.55043534660553
+          36.673355036296144,
+          42.20668836962948
         ]
       }
     ]
@@ -392,8 +392,8 @@
   "source_sha256": {
     "as-built-layout.json": "3f2831da516e964fa0e66f2a3d559711dcc6f3ab123e78123fdd9cf05f6ed49d",
     "scripts/layout.py": "53b502c477d70ee4ad8375e98381a49d026fb8a3b45325f8e5c1ea72b761042b",
-    "scripts/build_as_built.py": "a63589ef76510d71a2d28c516301dabafb0c53224c77925878e8dbc88ddd9f28",
-    "scripts/Enclosure.cs": "b1ccf84e5166d2f33a17446ff54cb2d9a9ec3b1de0f8e9a6fd4f7abe1cd24dd8",
+    "scripts/build_as_built.py": "8542d4c7944288880a57edc57ec8aa8ff03ec89b20417e49fee191515707adfa",
+    "scripts/Enclosure.cs": "c721996af15ef140362c4fdbd9344c50fb51cbcf3bec5d670e1119b675d57688",
     "scripts/Electronics.cs": "f154bb98f905676edee20863cd350507c711cd9def9c6964fec355b7e69d43ae",
     "scripts/LfaStrip.cs": "23fa767e0963f9d10fd1aeecf02b3d94eec863fe0b6e5cd0c5e19b5c97ce4cf4",
     "scripts/Wiring.cs": "f41e1db6a7161be95dd6ba05ecb94e6ee8c9bb673ded433bfe4f2da88fce818d",
@@ -416,7 +416,7 @@
       },
       "TCS_color": {
         "view_axis_blocked_mm": 0,
-        "clear_led_sample_rays": 3,
+        "clear_led_sample_rays": 2,
         "led_sample_rays": 9
       }
     },
@@ -462,40 +462,40 @@
       },
       "AS_control": {
         "view_axis_blocked_mm": 0,
-        "clear_led_sample_rays": 1,
+        "clear_led_sample_rays": 2,
         "led_sample_rays": 9
       },
       "TCS_color": {
         "view_axis_blocked_mm": 0,
-        "clear_led_sample_rays": 1,
+        "clear_led_sample_rays": 2,
         "led_sample_rays": 9
       }
     }
   },
   "sha256": {
-    "Alignment Gauge.step": "8190fbef74f7dfb46f4777cf5ef68dcc617fe9f8b5437e7e754056373f93abc2",
+    "Alignment Gauge.step": "7f2847b6b3ae24629a6e7a7aa6932515b76de02499b2f0936aa6c3fca572af7e",
     "Alignment Gauge.stl": "dfb5d98cf9d1735e2a88d7e70346bb94328d904d20694d97b08a4e073bff96bf",
-    "Electronics Assembly.step": "8be733ed8cb0d7f5211be983132142f44d54b98d3143a18e7ce0df56f45d0345",
-    "Enclosure Base.step": "6cf6b6c96d55f5afbc0243aa606343758784a7bcc95c6c1c4756784019f2ead1",
-    "Enclosure Base.stl": "0b27b336d12e541abadf0879468d4261d5a9c4814d71458429f3f5e3c61c58a0",
-    "Enclosure Color.step": "382c30b88a2b0f1baa03541dc4874722b524340479cd24cdcc9c02c866818213",
-    "Enclosure LFA.step": "45d4156d294ab5821313ccba24f96d6d0e3f2b8aaa20d8e59a0a7ec5ce397f54",
-    "Enclosure Lid.step": "3479873c4aefa039b33ba3b88cbafa16068d07f0e54abaac74dacd9762c5fd07",
+    "Electronics Assembly.step": "bcf1785d7b24fc5ca7a746419e0ebfcd67615f6dbbd3a3fb36e8d807948e9d03",
+    "Enclosure Base.step": "9194083a58ba230100f764b2985db19813763498132e73d45c935b3dbb5c720d",
+    "Enclosure Base.stl": "a6d2aec83260cceada91d59ba7b3e0431aec801a5c886cc84d34509b4f2312bb",
+    "Enclosure Color.step": "55eb73da1891d5680fe372016438244740a694995115ee37fe132f1a31eb3a1f",
+    "Enclosure LFA.step": "b5d4668633784d2e50b36aaceea258d6cc709355d06b5b0081cbe5b368572c25",
+    "Enclosure Lid.step": "7a9fccf9322905b56a4c52a93812508e34f51c1912434bd471656ccb23f397cf",
     "Enclosure Lid.stl": "f8350e45c2e1b0dcc912ec3afaf6459ede2cf5fd187d6188ca43480b23fb1581",
-    "Optical Module d1.2.step": "e29b56cdae3bd027087a62efdddc7e714c1c07a4706cc70d757a9bc7f5fb06ee",
-    "Optical Module d1.2.stl": "3a9ef939ad7ec27e1b18b4b952a6287cee83a36e69837a604295cdb28f9dc19d",
-    "Optical Module d1.6.step": "80c673656d353e7dd94e456ff455a0f91245e2d98460635a3db25783e27c48eb",
-    "Optical Module d1.6.stl": "e990fe706a4f45c3610ac1667dffafdeafac0cdf13c36a59ddd88755193f7784",
-    "Optical Module d2.0.step": "24bf3c0d57277fa049cae2211b87e8340914d15ac29d1c57f4b93550f2249cbd",
-    "Optical Module d2.0.stl": "457b8edd0a8fda9ea5f091b8cc294d4eed9855534276c195a619aca997688a03",
-    "Optical Module d2.5.step": "fbf2c5bb9b6baaa59eeee5b17955f43697549d849fdd6b39a5fb95680da6a018",
-    "Optical Module d2.5.stl": "592e5dcdc0dcb7b8b6d6af79bd2f7c70b91867d0d1e57371a3687db9e8aacc46",
-    "Test Jig Color.step": "e67afee0d4fcb0c371232f54a3b9640920ef4c6fb720ffbe38c1257e6519ef39",
-    "Test Jig LFA.step": "2573f759fc4098bf6ec215a594c87014796a32080c47cd9eddb45d97915dc6ca",
-    "Test Sled.step": "00b72c8cb26566647057877b16c6a4f26c59c84c22e418131ac052869809d1fe",
-    "Test Sled.stl": "847995a38fdc16d82e463e31a8cd1c61e04f90c3abcf17e12a8a0c00d93dedc0",
-    "Tunnel Cover.step": "08d585d7c019da696ce1fab8af51d356ea89d00a7a6eec28ce3cd5b9d69373c3",
-    "Tunnel Cover.stl": "2dc43af2ef3fad32c4f8fc731991295694c4ac35c4326a99922e23a5b447790b"
+    "Optical Module d1.2.step": "5cff2c55ead600554a7e37d58ecfe40eccadbb28c090e8ccf0588cd6e9246cd7",
+    "Optical Module d1.2.stl": "2bc8b58c84c41d7501a353c1602c6b2beb1f7f3c462a55edf74d6842e07546c8",
+    "Optical Module d1.6.step": "05801aa804b5a749d391fc0b6f38211fe96a37266d76eadd582efbae0548056b",
+    "Optical Module d1.6.stl": "940d36fb1fa3ece6afec9c8b99333deb1c3ccc1a105d106554a6f1ce181b59a4",
+    "Optical Module d2.0.step": "e96bcdf5674fa11387a452c1f977f7fe7dcc62840203a51387d45ea827b5ff67",
+    "Optical Module d2.0.stl": "0550ebfa166edf32b2514c58bb4e8be1e95c9e62d39ab0d2a903732bf15d19e8",
+    "Optical Module d2.5.step": "8d3152c95c8acfbc95e7ad43b9c8102dd3344c3262924b52fa0530f70a4f1302",
+    "Optical Module d2.5.stl": "62a900110f2c422838ff3fbc08c8a4e4b985e68405677ef69b86eeb6211a470b",
+    "Test Jig Color.step": "902e1a0f3b6e72a0535fd7db36c91a4509f3682857e30f06189499124b743d4f",
+    "Test Jig LFA.step": "5f0f8bb4fe25e28a936ac9256dbd72f98c42bbffa71504c60c53b8d69f141020",
+    "Test Sled.step": "63704f01a870400eebcdc99d519b1db8dd41c7eff7d9e9b33ad88709dcedda2e",
+    "Test Sled.stl": "a6f4b6884681c1548bf0c7c8a1ed76c704b15c71e97fc8d1e79bfc5b49c7affc",
+    "Tunnel Cover.step": "4b2ea2232decd4fd9503c2f4e5392fc3900f60d58f4be5c19c6c91957e1a8951",
+    "Tunnel Cover.stl": "7ef6d7c8a8b8e61069e7f3cff4b37ebb42479ba058556fdb8e9e5c19eae03b6e"
   },
   "compatibility_copies": {
     "Enclosure Assembly.step": "Enclosure LFA.step",
