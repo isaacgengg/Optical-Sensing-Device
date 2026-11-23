@@ -73,14 +73,27 @@ strip_result_t strip_analyze(const channel_reading_t *samples, size_t n,
     }
     result.reflectance.count = count;
 
+    // Shape matching: divide reading and ref by their own channel mean, so a
+    // pad that is uniformly brighter or dimmer (distance, tilt, LED drift)
+    // still matches. Cost: white and an even grey look the same.
     // ponytail: nearest neighbour on all channels, equally weighted. Weight or
     // drop channels (FD is flicker, VIS is broadband) if real data says so.
+    float mean = 0.0f;
+    for (size_t c = 0; c < count; c++) mean += result.reflectance.values[c];
+    mean /= (float)count;
+    if (!(mean > 0.0f)) return result;  // dark or NaN: no shape to compare
+
     float best = INFINITY;
     const color_ref_t *best_ref = NULL;
     for (size_t r = 0; r < cfg->ref_count; r++) {
+        float ref_mean = 0.0f;
+        for (size_t c = 0; c < count; c++) ref_mean += cfg->refs[r].reflectance[c];
+        ref_mean /= (float)count;
+        if (!(ref_mean > 0.0f)) return result;  // broken ref table
         float sum = 0.0f;
         for (size_t c = 0; c < count; c++) {
-            float d = result.reflectance.values[c] - cfg->refs[r].reflectance[c];
+            float d = result.reflectance.values[c] / mean -
+                      cfg->refs[r].reflectance[c] / ref_mean;
             sum += d * d;
         }
         float rms = sqrtf(sum / (float)count);
