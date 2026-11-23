@@ -26,8 +26,9 @@ static const channel_reading_t COLOR_WHITE = {
 // COLOR_WHITE above (recomputed from raw=, since the logged refl= was against
 // the old white). Read-to-read spread <= 0.008 RMS.
 // TODO(team): placeholder mapping (red = fentanyl, green = cocaine, yellow =
-// psychedelics, turquoise = general explosives) for test-paper colors, not
-// real reagent reactions.
+// psychedelics) for test-paper colors, not real reagent reactions. Turquoise
+// (general explosives) was dropped 2026-11-23: its shape is 0.080 from green
+// and a re-read under drifted lighting fell outside the match distance.
 static const color_ref_t COLOR_REFS[] = {
     {   // TODO(team): white card, all 1.0 by definition. Replace with the
         // refl= line of a few real unused pads; they're rarely pure white.
@@ -46,16 +47,12 @@ static const color_ref_t COLOR_REFS[] = {
         .name = "psychedelics", .color = "yellow", .verdict = STRIP_POSITIVE,
         .reflectance = {0.792, 0.534, 0.413, 0.533, 0.756, 0.682, 0.740, 0.808, 0.808, 0.828, 0.795, 0.832, 0.738, 0.632},
     },
-    {
-        .name = "explosives", .color = "turquoise", .verdict = STRIP_POSITIVE,
-        .reflectance = {0.843, 0.691, 0.669, 0.727, 0.756, 0.603, 0.626, 0.601, 0.587, 0.658, 0.729, 0.598, 0.661, 0.586},
-    },
 };
 
 // RMS shape distance (each spectrum divided by its own mean, see
 // strip_analysis.c) allowed before the pad counts as "no known color"
-// (INVALID). From the 2026-11-23 refs: closest pair green vs turquoise 0.080,
-// everything else >= 0.11; a green re-read 25% dimmer landed 0.028 from green.
-// Kept at half the closest gap. Shape matching can't tell white from an even
+// (INVALID). From the 2026-11-23 refs: closest pair red vs yellow 0.117, then
+// white vs green 0.123; a green re-read 25% dimmer landed 0.028 from green.
+// Could go up to ~0.058 (half the closest gap) for more drift tolerance. Shape matching can't tell white from an even
 // grey. TODO(team): re-tune once the rig is stable and real pads are read.
 #define COLOR_MAX_DISTANCE 0.04f
