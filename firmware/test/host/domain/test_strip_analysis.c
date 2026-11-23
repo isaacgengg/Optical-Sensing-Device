@@ -71,7 +71,15 @@ static void test_color_matches_nearest_reference(void)
     r = color(880, 1840, &CFG);  // refl 0.88, 0.92: near "clear"
     TEST_ASSERT_EQUAL(STRIP_NEGATIVE, r.verdict);
     TEST_ASSERT_EQUAL_STRING("clear", r.match);
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.02f, r.score);  // RMS of (0.02, 0.02)
+    // shape 0.88/0.9, 0.92/0.9 vs clear's 1, 1: RMS of (1/45, 1/45)
+    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 1.0f / 45.0f, r.score);
+}
+
+static void test_color_matches_shape_not_brightness(void)
+{
+    strip_result_t r = color(400, 200, &CFG);  // refl 0.4, 0.1: "blue" at half brightness
+    TEST_ASSERT_EQUAL_STRING("blue", r.match);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.0f, r.score);
 }
 
 static void test_color_too_far_from_every_reference_is_invalid(void)
@@ -85,15 +93,16 @@ static void test_color_too_far_from_every_reference_is_invalid(void)
 
 static void test_color_distance_boundary(void)
 {
-    // Values exact in binary: refl 0.25 vs ref 0.75 gives RMS exactly 0.5.
+    // Values exact in binary: refl (0.5, 1.5) has mean 1; grey's shape is
+    // (1, 1), so the RMS shape distance is exactly 0.5.
     static const color_ref_t one[] = {{.name = "grey", .verdict = STRIP_NEGATIVE, .reflectance = {0.75f, 0.75f}}};
     strip_config_t cfg = CFG;
     cfg.refs = one;
     cfg.ref_count = 1;
     cfg.max_distance = 0.5f;
-    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, color(250, 500, &cfg).verdict);
+    TEST_ASSERT_EQUAL(STRIP_NEGATIVE, color(500, 3000, &cfg).verdict);
     cfg.max_distance = 0.49f;
-    TEST_ASSERT_EQUAL(STRIP_INVALID, color(250, 500, &cfg).verdict);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, color(500, 3000, &cfg).verdict);
 }
 
 static void test_color_bad_config_is_invalid(void)
@@ -121,6 +130,9 @@ static void test_color_bad_config_is_invalid(void)
     strip_result_t r = strip_analyze(s, 1, &cfg);
     TEST_ASSERT_EQUAL(STRIP_INVALID, r.verdict);
     TEST_ASSERT_NULL(r.match);
+
+    channel_reading_t dark[1] = {{.values = {0, 0}, .count = 2}};  // no shape
+    TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze(dark, 1, &CFG).verdict);
 }
 
 // --- lateral flow ---
@@ -199,6 +211,7 @@ int main(void)
     RUN_TEST(test_average_rejects_inconsistent_channel_counts);
     RUN_TEST(test_color_reflectance_is_raw_over_white);
     RUN_TEST(test_color_matches_nearest_reference);
+    RUN_TEST(test_color_matches_shape_not_brightness);
     RUN_TEST(test_color_too_far_from_every_reference_is_invalid);
     RUN_TEST(test_color_distance_boundary);
     RUN_TEST(test_color_bad_config_is_invalid);

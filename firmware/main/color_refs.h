@@ -52,8 +52,10 @@ static const color_ref_t COLOR_REFS[] = {
     },
 };
 
-// RMS reflectance difference allowed before the pad counts as "no known
-// color" (INVALID). Measured 2026-11-23: same color <= 0.008 apart; closest
-// pair green vs turquoise 0.055, next yellow vs green 0.122. Kept under half
-// the closest gap. TODO(team): widen if real pads vary more than test paper.
-#define COLOR_MAX_DISTANCE 0.03f
+// RMS shape distance (each spectrum divided by its own mean, see
+// strip_analysis.c) allowed before the pad counts as "no known color"
+// (INVALID). From the 2026-11-23 refs: closest pair green vs turquoise 0.080,
+// everything else >= 0.11; a green re-read 25% dimmer landed 0.028 from green.
+// Kept at half the closest gap. Shape matching can't tell white from an even
+// grey. TODO(team): re-tune once the rig is stable and real pads are read.
+#define COLOR_MAX_DISTANCE 0.04f

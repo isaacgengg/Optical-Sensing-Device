@@ -53,7 +53,8 @@ typedef struct {
 typedef struct {
     strip_mode_t mode;
     strip_verdict_t verdict;
-    // Colorimetric: RMS reflectance distance to the closest reference (lower =
+    // Colorimetric: RMS distance between mean-normalized reflectance shapes of
+    // the reading and the closest reference (lower =
     // closer). Lateral flow: calibrated T contrast (0 if unavailable; verdict INVALID).
     float score;
     float control_score;  // lateral flow: C line signal. 0 otherwise
@@ -68,11 +69,12 @@ typedef struct {
 
 typedef struct {
     strip_mode_t mode;
-    // Colorimetric: reflectance = reading / white, then nearest reference.
+    // Colorimetric: reflectance = reading / white, then nearest reference by
+    // spectral shape (each divided by its own channel mean).
     const channel_reading_t *white;  // white card, read at the same settings
     const color_ref_t *refs;
     size_t ref_count;
-    float max_distance;  // RMS distance; farther than this from every ref = STRIP_INVALID
+    float max_distance;  // RMS shape distance; farther than this from every ref = STRIP_INVALID
     // LFA requires BOTH independent zone references; NULL means uncalibrated.
     const lfa_zone_ref_t *test_ref;
     const lfa_zone_ref_t *control_ref;
