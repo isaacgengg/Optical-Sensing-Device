@@ -29,6 +29,16 @@ jobs:
       - run: cmake --build build/host
       - run: ctest --test-dir build/host --output-on-failure
 
+  visualization-log-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python3 visualization/test/generate_logs.py
+      - run: node visualization/test/log-parser.test.cjs
+
   firmware-build:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.5.5
