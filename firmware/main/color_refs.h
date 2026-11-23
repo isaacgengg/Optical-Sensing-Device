@@ -16,17 +16,18 @@
 #pragma once
 #include "strip_types.h"
 
-// Measured 2026-11-05, cardboard-box rig, 100 ms @ 256x:
-// mean of 2 white-card reads (a third, 22% dimmer, was dropped as misplaced).
+// Measured 2026-11-23, 100 ms @ 256x: mean of 4 white-card reads.
 static const channel_reading_t COLOR_WHITE = {
-    .values = {14, 84.5, 394.5, 289, 455.5, 173.5, 543, 385.5, 242.5, 123, 17, 18, 556, 12031.5},
+    .values = {51, 130.25, 680.25, 879.75, 716.5, 300.25, 1046.75, 935.75, 876.25, 567.75, 82.25, 50.5, 1280, 35193},
     .count = 14,
 };
 
-// Measured 2026-11-05, same rig: mean reflectance of 4 red and 3 green test
-// strips. Low-count channels (F1, F8, NIR) are noisy until there's more light.
-// TODO(team): placeholder mapping (red = fentanyl, green = cocaine) for
-// test-paper colors, not real reagent reactions.
+// Measured 2026-11-23, same settings: mean of 5 reads per color, divided by
+// COLOR_WHITE above (recomputed from raw=, since the logged refl= was against
+// the old white). Read-to-read spread <= 0.008 RMS.
+// TODO(team): placeholder mapping (red = fentanyl, green = cocaine, yellow =
+// psychedelics, turquoise = general explosives) for test-paper colors, not
+// real reagent reactions.
 static const color_ref_t COLOR_REFS[] = {
     {   // TODO(team): white card, all 1.0 by definition. Replace with the
         // refl= line of a few real unused pads; they're rarely pure white.
@@ -35,15 +36,24 @@ static const color_ref_t COLOR_REFS[] = {
     },
     {
         .name = "fentanyl", .color = "red", .verdict = STRIP_POSITIVE,
-        .reflectance = {0.089, 0.050, 0.032, 0.046, 0.037, 0.035, 0.067, 0.140, 0.387, 0.457, 0.471, 0.389, 0.127, 0.160},
+        .reflectance = {0.906, 0.662, 0.577, 0.754, 0.687, 0.671, 0.706, 0.828, 0.978, 1.011, 0.987, 0.891, 0.862, 0.749},
     },
     {
         .name = "cocaine", .color = "green", .verdict = STRIP_POSITIVE,
-        .reflectance = {0.310, 0.312, 0.349, 0.373, 0.528, 0.402, 0.366, 0.237, 0.139, 0.374, 0.843, 0.352, 0.344, 0.332},
+        .reflectance = {0.843, 0.590, 0.514, 0.655, 0.754, 0.625, 0.638, 0.626, 0.604, 0.666, 0.749, 0.610, 0.640, 0.583},
+    },
+    {
+        .name = "psychedelics", .color = "yellow", .verdict = STRIP_POSITIVE,
+        .reflectance = {0.792, 0.534, 0.413, 0.533, 0.756, 0.682, 0.740, 0.808, 0.808, 0.828, 0.795, 0.832, 0.738, 0.632},
+    },
+    {
+        .name = "explosives", .color = "turquoise", .verdict = STRIP_POSITIVE,
+        .reflectance = {0.843, 0.691, 0.669, 0.727, 0.756, 0.603, 0.626, 0.601, 0.587, 0.658, 0.729, 0.598, 0.661, 0.586},
     },
 };
 
 // RMS reflectance difference allowed before the pad counts as "no known
-// color" (INVALID). Measured on the box rig: same color 0.01-0.09 apart,
-// red vs green >= 0.27, white vs either >= 0.42. TODO(team): re-check on the printed rig.
-#define COLOR_MAX_DISTANCE 0.15f
+// color" (INVALID). Measured 2026-11-23: same color <= 0.008 apart; closest
+// pair green vs turquoise 0.055, next yellow vs green 0.122. Kept under half
+// the closest gap. TODO(team): widen if real pads vary more than test paper.
+#define COLOR_MAX_DISTANCE 0.03f
