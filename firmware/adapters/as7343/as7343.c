@@ -239,6 +239,8 @@ static esp_err_t as7343_read(void *ctx, channel_reading_t *out)
         return stop_err;
     }
     if (buf[0] & ASTATUS_ASAT) {
+        ESP_LOGW(TAG, "AS7343@0x%02x saturated (ASTATUS=0x%02x): ESP_ERR_INVALID_RESPONSE",
+                 s->address, buf[0]);
         return ESP_ERR_INVALID_RESPONSE;
     }
 

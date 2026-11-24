@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Optical reader — visualization draft</title>
+  <title>Optical reader — log viewer</title>
   <style>
     :root {
       color-scheme: light;
@@ -33,6 +33,15 @@
     dt { color: #c1d3d7; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
     dd { margin: 8px 0 0; font: 28px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
     #verdict { font: 600 clamp(28px, 3.4vw, 40px)/1.2 system-ui, sans-serif; letter-spacing: -.04em; overflow-wrap: anywhere; }
+    .detail-field { grid-column: 1 / -1; }
+    .detail-field dd { font: 15px/1.5 system-ui, sans-serif; overflow-wrap: anywhere; }
+    #matched-color { font: 600 28px/1.3 system-ui, sans-serif; }
+    #result-note { padding: 12px; border-left: 3px solid var(--accent); margin: 16px 0 24px; }
+    #result-source, #freshness { font-size: 12px; color: #c1d3d7; }
+    #freshness { min-height: 36px; }
+    .history-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+    .history-heading button { width: auto; padding: 10px 16px; }
+    dl { margin-bottom: 24px; gap: 20px; }
     .status.live { background: #f0f6f7; }
     .status.live::before { background: #2f9e6e; }
     .actions { display: grid; gap: 8px; }
@@ -58,6 +67,21 @@
     tbody tr:first-child:not(#empty) { background: #d8e8e6; }
     #empty td { white-space: normal; padding: 48px 8px; font: 14px/1.5 system-ui, sans-serif; }
     .footnote { margin: 24px 0 0; color: var(--muted); font-size: 13px; }
+    .command-buttons, .load-actions { display: flex; gap: 8px; }
+    .subheading { margin-top: 32px; }
+    .channels { max-height: 280px; }
+    .channels th, .channels td { padding: 8px; text-align: right; font-family: var(--mono); }
+    details { margin-top: 24px; font-size: 13px; }
+    summary { cursor: pointer; font-weight: 650; padding: 8px 0; }
+    pre { overflow: auto; padding: 12px; background: #dfe7e9; white-space: pre; font: 12px/1.6 var(--mono); }
+    .console pre { max-height: 300px; }
+    textarea { display: block; width: 100%; margin: 8px 0 12px; padding: 12px; border: 1px solid #93a7ac; background: #f7fafa; font: 12px/1.5 var(--mono); resize: vertical; }
+    .load-actions { align-items: center; flex-wrap: wrap; }
+    .load-actions button { width: auto; padding: 10px 16px; }
+    .file-label { display: grid; gap: 4px; }
+    .history-section th:nth-child(n+5), .history-section td:nth-child(n+5) { text-align: left; }
+    .history-section th:nth-child(n+7), .history-section td:nth-child(n+7) { text-align: right; }
+    #test-type { overflow-wrap: anywhere; }
     @media (max-width: 1000px) {
       main { margin: 24px auto; padding: 0 24px; }
       .masthead { flex-wrap: wrap; margin-bottom: 24px; }
@@ -72,172 +96,65 @@
     <header class="masthead">
       <div>
         <h1>Optical reader</h1>
-        <p class="project">DetectaChem capstone / Development dashboard</p>
+        <p class="project">DetectaChem capstone / Firmware log viewer</p>
       </div>
-      <span class="status" id="status" role="status">Simulation mode</span>
+      <span class="status" id="status" role="status">Not connected</span>
     </header>
     <div class="workspace">
     <section class="latest" aria-labelledby="latest-heading">
-      <h2 id="latest-heading">Latest result</h2>
-      <dl aria-live="polite" aria-atomic="true">
-        <div class="verdict-field"><dt>Verdict</dt><dd id="verdict">—</dd></div>
-        <div class="test-type-field"><dt>Test type</dt><dd id="test-type">—</dd></div>
-        <div><dt id="score-label">Score / T line</dt><dd id="score">—</dd></div>
-        <div><dt>C-line score</dt><dd id="control-score">—</dd></div>
-        <div><dt>Sample count</dt><dd id="sample-count">—</dd></div>
-      </dl>
+      <h2 id="latest-heading">Latest logged result</h2>
       <div class="actions">
-        <button id="connect" type="button">Connect device</button>
-        <button id="generate" type="button" class="secondary">Generate sample result</button>
+        <button id="connect" type="button">Connect USB log</button>
+        <div class="command-buttons"><button id="measure-color" type="button" class="secondary" disabled>Color · c</button><button id="measure-lfa" type="button" class="secondary" disabled>LFA · l</button></div>
       </div>
-      <p class="instrument-note" id="note">Connect to the reader over Bluetooth, or generate simulated results.</p>
+      <p class="instrument-note" id="note">Connect USB at 115200 baud, or load an existing log. Close other serial monitors before connecting.</p>
+      <p id="result-source">No measurement received</p>
+      <p id="freshness" role="status">Connect the reader or load a log.</p>
+      <dl aria-live="polite" aria-atomic="true">
+        <div class="verdict-field"><dt>Firmware verdict</dt><dd id="verdict">—</dd></div>
+        <div class="test-type-field"><dt>Test type</dt><dd id="test-type">—</dd></div>
+        <div class="detail-field"><dt>Matched color</dt><dd id="matched-color">—</dd></div>
+        <div class="detail-field"><dt>Match (logged)</dt><dd id="reference">—</dd></div>
+        <div class="detail-field"><dt>Match decision (logged)</dt><dd id="match-status">—</dd></div>
+        <div class="detail-field"><dt>Nearest color (logged)</dt><dd id="nearest-color">—</dd></div>
+        <div class="detail-field"><dt>Next closest color (logged)</dt><dd id="runner-up-color">—</dd></div>
+        <div><dt>Distance lead (logged)</dt><dd id="color-margin">—</dd></div>
+        <div><dt id="score-label">Score (logged)</dt><dd id="score">—</dd></div>
+        <div><dt>Control (logged)</dt><dd id="control-score">—</dd></div>
+        <div><dt>Sample count</dt><dd id="sample-count">—</dd></div>
+        <div class="detail-field"><dt>Calibration</dt><dd id="calibration">—</dd></div>
+        <div class="detail-field"><dt>Device log time</dt><dd id="measurement-id">—</dd></div>
+      </dl>
+      <p class="instrument-note" id="result-note">Values are copied from the log without calculating a verdict or a score.</p>
     </section>
     <section class="history-section" aria-labelledby="history-heading">
-      <h2 id="history-heading">Result history</h2>
+      <div class="history-heading"><h2 id="history-heading">Result history</h2><button id="export" type="button" disabled>Export CSV</button></div>
       <div class="table-wrap">
         <table>
-          <caption>Newest first · resets on reload</caption>
-          <thead><tr><th scope="col">#</th><th scope="col">Source</th><th scope="col">Test type</th><th scope="col">Verdict</th><th scope="col">Score / T line</th><th scope="col">C line</th><th scope="col">Samples</th></tr></thead>
-          <tbody id="history"><tr id="empty"><td colspan="7">No results yet. Connect a device or generate a sample.</td></tr></tbody>
+          <caption>Newest first · receive time on this computer · export before reloading</caption>
+          <thead><tr><th scope="col">#</th><th scope="col">Received</th><th scope="col">Source</th><th scope="col">Test type</th><th scope="col">Color</th><th scope="col">Verdict</th><th scope="col">Score</th><th scope="col">Control</th><th scope="col">Samples</th></tr></thead>
+          <tbody id="history"><tr id="empty"><td colspan="9">No results yet. Connect USB or load a log below.</td></tr></tbody>
         </table>
       </div>
+      <h2 class="subheading">Latest channel values</h2>
+      <div class="table-wrap channels"><table>
+        <caption>Literal logged values · channel indices are not wavelengths</caption>
+        <thead><tr><th>Index</th><th>raw / test_raw</th><th>control_raw</th><th>refl</th></tr></thead>
+        <tbody id="spectra"><tr><td colspan="4">No channel values received for this result.</td></tr></tbody>
+      </table></div>
+      <details><summary>Original lines for this result</summary><pre id="result-log"></pre></details>
+      <details open class="load-log"><summary>Load a saved or copied log</summary>
+        <label for="paste-log">Paste serial output</label>
+        <textarea id="paste-log" rows="5" placeholder="I (12345) log_sink: mode=COLORIMETRIC verdict=..."></textarea>
+        <div class="load-actions"><button id="import" type="button">Display pasted log</button><label class="file-label">Open .txt / .log<input id="log-file" type="file" accept=".txt,.log,text/plain"></label></div>
+      </details>
     </section>
     </div>
-    <p class="footnote">For lateral flow, score is the T-line signal and C line is the control signal. C line is not applicable (N/A) for colorimetric tests. Dual-sensor firmware reports calibrated line contrast; older firmware used raw signal. INVALID may mean missing calibration; zero scores then do not mean a measured absence of lines. Scores are not confidence, probability, or concentration. Example scores do not define classification thresholds.</p>
-    <noscript><p>Enable JavaScript to generate and display sample results.</p></noscript>
+    <details class="console"><summary>Received log · latest 2,000 lines</summary><pre id="serial-log"></pre></details>
+    <p class="footnote">Values and verdicts are copied from the firmware. The five-color bench profile identifies sample colors. Missing fields are marked “Not reported.” USB commands send the same c/l keys as the serial monitor.</p>
+    <noscript><p>Enable JavaScript to display log output.</p></noscript>
   </main>
-  <script>
-    // Matches strip_verdict_t in firmware/core/domain/include/strip_types.h.
-    const verdictLabels = ["Negative", "Positive", "Invalid"];
-    const modeLabels = ["Lateral flow", "Colorimetric"];
-    // Illustrative fixtures only; scores do not establish classification thresholds.
-    const sampleResults = [
-      { mode: 0, verdict: 0, score: 0.18, control_score: 0.85, sample_count: 8 },
-      { mode: 1, verdict: 1, score: 0.72, control_score: 0, sample_count: 8 },
-      { mode: 0, verdict: 2, score: 0.03, control_score: 0.02, sample_count: 8 }
-    ];
-    let resultCount = 0;
-
-    // Shared display entry point for decoded BLE results and simulated fixtures.
-    function handleResult(result, source = "Simulated") {
-      if (!result || !Number.isInteger(result.mode) ||
-          result.mode < 0 || result.mode >= modeLabels.length ||
-          !Number.isInteger(result.verdict) ||
-          result.verdict < 0 || result.verdict >= verdictLabels.length ||
-          !Number.isFinite(result.score) || !Number.isFinite(result.control_score) ||
-          !Number.isInteger(result.sample_count) ||
-          result.sample_count < 0 || result.sample_count > 65535) {
-        throw new Error("Invalid measurement result");
-      }
-      const label = verdictLabels[result.verdict];
-      const mode = modeLabels[result.mode];
-      const score = result.score.toFixed(3);
-      const controlScore = result.mode === 0 ? result.control_score.toFixed(3) : "N/A";
-      document.getElementById("verdict").textContent = label;
-      document.getElementById("test-type").textContent = mode;
-      document.getElementById("score-label").textContent = result.mode === 0 ? "T-line score" : "Score";
-      document.getElementById("score").textContent = score;
-      document.getElementById("control-score").textContent = controlScore;
-      document.getElementById("sample-count").textContent = result.sample_count;
-      document.getElementById("empty")?.remove();
-      const row = document.createElement("tr");
-      for (const value of [++resultCount, source, mode, label, score, controlScore, result.sample_count]) {
-        const cell = document.createElement("td");
-        cell.textContent = value;
-        row.appendChild(cell);
-      }
-      document.getElementById("history").prepend(row);
-    }
-
-    document.getElementById("generate").addEventListener("click", () => {
-      handleResult(sampleResults[resultCount % sampleResults.length]);
-    });
-
-    // --- Bluetooth (Web Bluetooth: Chrome/Edge, https or localhost) ---
-    // Must match firmware/adapters/ble_mobiledetect/ble_mobiledetect.c.
-    const SERVICE_UUID = "c0a5f1d4-5322-444a-8b52-678d10103cfc";
-    const RESULT_UUID = "5407ab56-5c25-47f7-8ce3-71a01d48ad11";
-    const PAYLOAD_VERSION = 1;  // MDP_VERSION
-    const PAYLOAD_LEN = 13;     // MDP_RESULT_LEN
-    const statusEl = document.getElementById("status");
-    const noteEl = document.getElementById("note");
-    const connectBtn = document.getElementById("connect");
-    let device = null;
-
-    // v1, little-endian: version:u8, mode:u8, verdict:u8, score:f32,
-    // control_score:f32, sample_count:u16.
-    function decodeResult(view) {
-      if (view.byteLength !== PAYLOAD_LEN) throw new Error(`Expected ${PAYLOAD_LEN} bytes, got ${view.byteLength}`);
-      const version = view.getUint8(0);
-      if (version !== PAYLOAD_VERSION) throw new Error(`Unsupported payload version ${version}`);
-      return {
-        mode: view.getUint8(1),
-        verdict: view.getUint8(2),
-        score: view.getFloat32(3, true),
-        control_score: view.getFloat32(7, true),
-        sample_count: view.getUint16(11, true)
-      };
-    }
-
-    function setStatus(text, live, note) {
-      statusEl.textContent = text;
-      statusEl.classList.toggle("live", live);
-      noteEl.textContent = note;
-    }
-
-    function onResult(event) {
-      try {
-        handleResult(decodeResult(event.target.value), "Device");
-      } catch (err) {
-        noteEl.textContent = `Ignored a malformed result: ${err.message}`;
-      }
-    }
-
-    function onDisconnected() {
-      setStatus("Disconnected", false, "The reader disconnected. Connect again to resume.");
-      connectBtn.textContent = "Connect device";
-      connectBtn.disabled = false;
-    }
-
-    connectBtn.addEventListener("click", async () => {
-      if (device?.gatt.connected) {
-        device.gatt.disconnect();  // fires onDisconnected
-        return;
-      }
-      connectBtn.disabled = true;
-      try {
-        if (!device) {
-          device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
-          device.addEventListener("gattserverdisconnected", onDisconnected);
-        }
-        setStatus("Connecting…", false, `Connecting to ${device.name ?? "reader"}…`);
-        const server = await device.gatt.connect();
-        const service = await server.getPrimaryService(SERVICE_UUID);
-        const chr = await service.getCharacteristic(RESULT_UUID);
-        chr.oncharacteristicvaluechanged = onResult;  // assignment, so reconnecting never doubles it
-        await chr.startNotifications();
-        setStatus("Connected", true, `Live: ${device.name ?? "reader"}. Results appear as measurements finish.`);
-        connectBtn.textContent = "Disconnect";
-      } catch (err) {
-        // NotFoundError = the user closed the device picker.
-        const msg = err.name === "NotFoundError" ? "No device selected." : `Could not connect: ${err.message}`;
-        setStatus(device?.gatt.connected ? "Connected" : "Simulation mode", false, msg);
-        // Forget a device that failed, so the next click shows the picker
-        // again instead of retrying a stale handle (e.g. after a board reset).
-        if (!device?.gatt.connected) device = null;
-      } finally {
-        connectBtn.disabled = false;
-      }
-    });
-
-    if (!navigator.bluetooth) {
-      connectBtn.disabled = true;
-      noteEl.textContent = window.isSecureContext
-        ? (/Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent)
-            ? "Web Bluetooth is off. On Linux, enable chrome://flags/#enable-experimental-web-platform-features and relaunch Chrome."
-            : "This browser has no Web Bluetooth. Use Chrome or Edge.")
-        : "Bluetooth needs a secure page. Serve this folder and open http://localhost:8000.";
-    }
-  </script>
+  <script src="log-parser.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

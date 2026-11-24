@@ -2,11 +2,16 @@
 // (console_input, later a keypad or GPIO buttons) implement it.
 #pragma once
 #include "esp_err.h"
-#include "strip_types.h"
+
+typedef enum {
+    COMMAND_LATERAL_FLOW = 0,
+    COMMAND_COLORIMETRIC,
+    COMMAND_LFA_DARK,
+} measurement_command_t;
 
 typedef struct {
     esp_err_t (*init)(void *ctx);
-    // Blocks until the user asks for a measurement, then reports which mode.
-    esp_err_t (*wait_request)(void *ctx, strip_mode_t *out_mode);
+    // Diagnostic captures are commands, not assay modes or verdicts.
+    esp_err_t (*wait_request)(void *ctx, measurement_command_t *out_command);
     void *ctx;
 } command_source_t;

@@ -112,7 +112,7 @@ def flash(build, port):
 
 
 def monitor(port):
-    print("Serial monitor: press l or c to measure, EN/RST on the board to reboot. Quit with Ctrl+].")
+    print("Serial monitor: l/c to measure, d for LFA dark capture (lights off). EN/RST to reboot. Quit with Ctrl+].")
     run([venv_python(), "-m", "serial.tools.miniterm", port, "115200"])
 
 

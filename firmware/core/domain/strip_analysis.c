@@ -61,40 +61,84 @@ strip_result_t strip_analyze(const channel_reading_t *samples, size_t n,
 
     const channel_reading_t *white = cfg->white;
     if (white == NULL || cfg->refs == NULL || cfg->ref_count == 0 ||
-        result.raw.count == 0 || white->count != result.raw.count) {
+        result.raw.count == 0 || white->count != result.raw.count ||
+        !isfinite(cfg->min_color_margin) || cfg->min_color_margin < 0.0f) {
         return result;
     }
     size_t count = result.raw.count;
     for (size_t c = 0; c < count; c++) {
-        if (white->values[c] <= 0.0f) {
+        if (!isfinite(white->values[c]) || white->values[c] <= 0.0f) {
             return result;  // dead or uncalibrated channel: can't divide by it
         }
         result.reflectance.values[c] = result.raw.values[c] / white->values[c];
     }
     result.reflectance.count = count;
 
-    // ponytail: nearest neighbour on all channels, equally weighted. Weight or
+    // Shape matching: divide reading and ref by their own channel mean, so a
+    // uniformly brighter or dimmer pad still matches. Changes in angle or
+    // coverage can change shape and are not corrected by this normalization.
+    // Cost: white and an even grey look the same.
+    // Nearest neighbour on all channels, equally weighted. Weight or
     // drop channels (FD is flicker, VIS is broadband) if real data says so.
+    float mean = 0.0f;
+    for (size_t c = 0; c < count; c++) mean += result.reflectance.values[c];
+    mean /= (float)count;
+    if (!isfinite(mean) || !(mean > 0.0f)) return result;
+
     float best = INFINITY;
+    float second = INFINITY;
     const color_ref_t *best_ref = NULL;
+    const color_ref_t *second_ref = NULL;
     for (size_t r = 0; r < cfg->ref_count; r++) {
+        float ref_mean = 0.0f;
+        for (size_t c = 0; c < count; c++) ref_mean += cfg->refs[r].reflectance[c];
+        ref_mean /= (float)count;
+        if (!isfinite(ref_mean) || !(ref_mean > 0.0f)) return result;
         float sum = 0.0f;
         for (size_t c = 0; c < count; c++) {
-            float d = result.reflectance.values[c] - cfg->refs[r].reflectance[c];
+            float d = result.reflectance.values[c] / mean -
+                      cfg->refs[r].reflectance[c] / ref_mean;
             sum += d * d;
         }
         float rms = sqrtf(sum / (float)count);
+        if (!isfinite(rms)) return result;
         if (rms < best) {
+            second = best;
+            second_ref = best_ref;
             best = rms;
             best_ref = &cfg->refs[r];
+        } else if (rms < second) {
+            second = rms;
+            second_ref = &cfg->refs[r];
         }
     }
     result.score = best;
-    if (best <= cfg->max_distance) {
-        result.match = best_ref->name;
-        result.color = best_ref->color;
-        result.verdict = best_ref->verdict;
+    if (best_ref == NULL) return result;
+    // Select the nearest color first, then apply only its cutoff. A rejected
+    // nearest color must not fall through to a farther, more permissive one.
+    float max_distance = best_ref->max_distance == 0.0f
+                             ? cfg->max_distance : best_ref->max_distance;
+    if (!isfinite(max_distance) || max_distance < 0.0f) return result;
+    result.color_match = (color_match_info_t){
+        .nearest = best_ref->color ? best_ref->color : best_ref->name,
+        .runner_up = second_ref ? (second_ref->color ? second_ref->color : second_ref->name) : NULL,
+        .runner_up_score = second,
+        .margin = second - best,
+        .max_distance = max_distance,
+        .min_margin = cfg->min_color_margin,
+    };
+    if (best > max_distance) {
+        result.color_match.status = COLOR_MATCH_TOO_FAR;
+        return result;
     }
+    if (second_ref && second - best < cfg->min_color_margin) {
+        result.color_match.status = COLOR_MATCH_AMBIGUOUS;
+        return result;
+    }
+    result.color_match.status = COLOR_MATCH_ACCEPTED;
+    result.match = best_ref->name;
+    result.color = best_ref->color;
+    result.verdict = best_ref->verdict;
     return result;
 }
 

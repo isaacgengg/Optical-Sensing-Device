@@ -14,6 +14,8 @@ typedef struct {
     fake_light_call_t calls[FAKE_ILLUMINATOR_MAX_CALLS];
     size_t call_count;
     int init_count;
+    size_t fail_call;  // 1-based set call; 0 disables failure injection
+    esp_err_t set_error;
 } fake_illuminator_state_t;
 
 // Resets recorded state.
