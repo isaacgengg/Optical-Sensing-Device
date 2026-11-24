@@ -135,6 +135,89 @@ static void test_color_bad_config_is_invalid(void)
     TEST_ASSERT_EQUAL(STRIP_INVALID, strip_analyze(dark, 1, &CFG).verdict);
 }
 
+static void test_color_rejected_nearest_does_not_fall_back_to_wider_reference(void)
+{
+    static const color_ref_t refs[] = {
+        {.name = "yellow", .color = "yellow", .verdict = STRIP_POSITIVE,
+         .reflectance = {1.3f, 0.7f}, .max_distance = 0.09f},
+        {.name = "red", .color = "red", .verdict = STRIP_POSITIVE,
+         .reflectance = {1.2f, 0.8f}, .max_distance = 0.04f},
+    };
+    strip_config_t cfg = CFG;
+    cfg.refs = refs;
+    cfg.max_distance = 0.04f;
+    // Red is closer (0.045), but outside its cutoff. Yellow is within its
+    // wider cutoff (0.055), which must not override the nearest-color decision.
+    strip_result_t r = color(1245, 1510, &cfg);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.045f, r.score);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, r.verdict);
+    TEST_ASSERT_NULL(r.match);
+    TEST_ASSERT_NULL(r.color);
+    TEST_ASSERT_EQUAL(COLOR_MATCH_TOO_FAR, r.color_match.status);
+    TEST_ASSERT_EQUAL_STRING("red", r.color_match.nearest);
+    TEST_ASSERT_EQUAL_STRING("yellow", r.color_match.runner_up);
+}
+
+static void test_color_margin_boundary_and_diagnostics(void)
+{
+    static const color_ref_t refs[] = {
+        {.name = "a", .color = "a", .verdict = STRIP_NEGATIVE, .reflectance = {1, 1}},
+        {.name = "b", .color = "b", .verdict = STRIP_POSITIVE, .reflectance = {1.5f, 0.5f}},
+    };
+    strip_config_t cfg = CFG;
+    cfg.refs = refs;
+    cfg.max_distance = 0.4f;
+    cfg.min_color_margin = 0.125f;
+    // Exact binary values: best = .1875, second = .3125, lead = .125.
+    strip_result_t r = color(1187.5f, 1625, &cfg);
+    TEST_ASSERT_EQUAL_STRING("a", r.color);
+    TEST_ASSERT_EQUAL(COLOR_MATCH_ACCEPTED, r.color_match.status);
+    TEST_ASSERT_EQUAL_STRING("a", r.color_match.nearest);
+    TEST_ASSERT_EQUAL_STRING("b", r.color_match.runner_up);
+    TEST_ASSERT_EQUAL_FLOAT(0.3125f, r.color_match.runner_up_score);
+    TEST_ASSERT_EQUAL_FLOAT(0.125f, r.color_match.margin);
+    cfg.min_color_margin = 0.126f;
+    r = color(1187.5f, 1625, &cfg);
+    TEST_ASSERT_EQUAL(STRIP_INVALID, r.verdict);
+    TEST_ASSERT_EQUAL(COLOR_MATCH_AMBIGUOUS, r.color_match.status);
+    TEST_ASSERT_NULL(r.color);
+    TEST_ASSERT_NULL(r.match);
+    TEST_ASSERT_EQUAL_FLOAT(0.1875f, r.score);
+}
+
+static void test_color_ties_are_rejected_regardless_of_reference_order(void)
+{
+    color_ref_t refs[] = {
+        {.name = "a", .color = "a", .verdict = STRIP_NEGATIVE, .reflectance = {1, 1}},
+        {.name = "b", .color = "b", .verdict = STRIP_POSITIVE, .reflectance = {1.5f, 0.5f}},
+    };
+    strip_config_t cfg = CFG;
+    cfg.refs = refs;
+    cfg.max_distance = 0.4f;
+    cfg.min_color_margin = 0.01f;
+    for (int order = 0; order < 2; order++) {
+        strip_result_t r = color(1250, 1500, &cfg);
+        TEST_ASSERT_EQUAL(STRIP_INVALID, r.verdict);
+        TEST_ASSERT_EQUAL(COLOR_MATCH_AMBIGUOUS, r.color_match.status);
+        TEST_ASSERT_EQUAL_FLOAT(0, r.color_match.margin);
+        color_ref_t temp = refs[0]; refs[0] = refs[1]; refs[1] = temp;
+    }
+    cfg.min_color_margin = 0; // Opt-in guard preserves existing config behavior.
+    TEST_ASSERT_EQUAL_STRING("a", color(1250, 1500, &cfg).color);
+}
+
+static void test_color_rejects_invalid_margin_settings(void)
+{
+    const float margins[] = {-0.01f, NAN, INFINITY};
+    for (size_t i = 0; i < sizeof(margins) / sizeof(margins[0]); i++) {
+        strip_config_t cfg = CFG;
+        cfg.min_color_margin = margins[i];
+        strip_result_t r = color(800, 400, &cfg);
+        TEST_ASSERT_EQUAL(STRIP_INVALID, r.verdict);
+        TEST_ASSERT_NULL(r.color);
+    }
+}
+
 // --- lateral flow ---
 static const lfa_zone_ref_t T_REF = {
     .dark = {.values = {10, 20}, .count = 2},
@@ -215,6 +298,10 @@ int main(void)
     RUN_TEST(test_color_too_far_from_every_reference_is_invalid);
     RUN_TEST(test_color_distance_boundary);
     RUN_TEST(test_color_bad_config_is_invalid);
+    RUN_TEST(test_color_rejected_nearest_does_not_fall_back_to_wider_reference);
+    RUN_TEST(test_color_margin_boundary_and_diagnostics);
+    RUN_TEST(test_color_ties_are_rejected_regardless_of_reference_order);
+    RUN_TEST(test_color_rejects_invalid_margin_settings);
     RUN_TEST(test_lfa_independent_normalization_and_rules);
     RUN_TEST(test_lfa_invalid_calibration_and_samples);
     return UNITY_END();

@@ -17,6 +17,7 @@ static esp_err_t fake_set(void *ctx, bool on, uint8_t intensity_pct)
         s_state.calls[s_state.call_count] = (fake_light_call_t){on, intensity_pct};
     }
     s_state.call_count++;
+    if (s_state.call_count == s_state.fail_call) return s_state.set_error;
     return ESP_OK;
 }
 

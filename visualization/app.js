@@ -25,6 +25,10 @@ function renderRecord(record) {
   byId("test-type").textContent = r?.mode ?? "Not reported";
   byId("matched-color").textContent = r?.color ?? "—";
   byId("reference").textContent = r?.match ?? "—";
+  byId("match-status").textContent = r?.match_status ?? "Not reported";
+  byId("nearest-color").textContent = r?.nearest_color ?? "Not reported";
+  byId("runner-up-color").textContent = r?.runner_up_color ?? "Not reported";
+  byId("color-margin").textContent = r?.color_margin ?? "—";
   byId("score").textContent = r?.score ?? "—";
   byId("control-score").textContent = r?.control ?? "—";
   byId("sample-count").textContent = r?.samples ?? "—";
@@ -97,7 +101,7 @@ function updateFreshness(now=Date.now()) {
 }
 setInterval(updateFreshness,1000);
 function csvText() {
-  const columns=["received_at","input_source","hardware_source","uptime_ms","mode","verdict","match","color","score","control","samples","calibration","metric","zones","raw","test_raw","control_raw","refl","error"];
+  const columns=["received_at","input_source","hardware_source","uptime_ms","mode","verdict","match","color","score","control","samples","calibration","metric","zones","match_status","nearest_color","runner_up_color","runner_up_score","color_margin","max_distance","min_margin","raw","test_raw","control_raw","refl","error"];
   const cell=value=>{
     let text=Array.isArray(value)?value.join(", "):String(value??"");
     // Preserve numbers; stop untrusted textual labels being treated as formulas.

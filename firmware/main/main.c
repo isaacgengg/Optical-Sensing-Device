@@ -13,6 +13,7 @@
 #include "freertos_timebase.h"
 #include "led_gpio.h"
 #include "console_input.h"
+#include "log_sink.h"
 
 #if CONFIG_DC_SENSOR_TCS3448
 #include "i2c_bus.h"
@@ -27,8 +28,6 @@
 
 #if CONFIG_DC_SINK_BLE
 #include "ble_mobiledetect.h"
-#else
-#include "log_sink.h"
 #endif
 
 static const char *TAG = "main";
@@ -68,8 +67,7 @@ static esp_err_t all_lights_set(void *ctx, bool on, uint8_t intensity_pct)
 static illuminator_t s_all_lights = {.init = all_lights_init, .set = all_lights_set};
 #endif
 
-// TODO(team): placeholder measurement parameters, one set per test mode.
-// Tune once the optics exist.
+// Bench acquisition settings, with separate references for each mode.
 static const measurement_config_t s_cfg[] = {
     [STRIP_MODE_LATERAL_FLOW] = {
         .integration_ms = LFA_TEST_INTEGRATION_MS,
@@ -98,6 +96,7 @@ static const measurement_config_t s_cfg[] = {
             .refs = COLOR_REFS,
             .ref_count = sizeof(COLOR_REFS) / sizeof(COLOR_REFS[0]),
             .max_distance = COLOR_MAX_DISTANCE,
+            .min_color_margin = COLOR_MIN_MARGIN,
         },
     },
 };
@@ -106,11 +105,27 @@ static void measurement_task(void *arg)
 {
     (void)arg;
     for (;;) {
-        strip_mode_t mode;
+        measurement_command_t command;
         strip_result_t result;
-        esp_err_t err = s_input->wait_request(s_input->ctx, &mode);
+        esp_err_t err = s_input->wait_request(s_input->ctx, &command);
         if (err == ESP_OK) {
-            err = measurement_run(&s_deps, &s_cfg[mode], &result);
+            switch (command) {
+            case COMMAND_LATERAL_FLOW:
+                err = measurement_run(&s_deps, &s_cfg[STRIP_MODE_LATERAL_FLOW], &result);
+                break;
+            case COMMAND_COLORIMETRIC:
+                err = measurement_run(&s_deps, &s_cfg[STRIP_MODE_COLORIMETRIC], &result);
+                break;
+            case COMMAND_LFA_DARK: {
+                lfa_dark_capture_t capture;
+                err = measurement_capture_lfa_dark(&s_deps, &s_cfg[STRIP_MODE_LATERAL_FLOW], &capture);
+                if (err == ESP_OK) err = log_sink_lfa_dark(&capture);
+                break;
+            }
+            default:
+                err = ESP_ERR_INVALID_ARG;
+                break;
+            }
         }
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "measurement failed: %s", esp_err_to_name(err));
@@ -134,6 +149,9 @@ void app_main(void)
     s_deps.test_sensor = s_deps.color_sensor;
     ESP_LOGI(TAG, "source=hardware first/test=TCS3448@0x59 color=TCS3448@0x59");
 #if CONFIG_DC_LFA_AS7343
+    ESP_LOGI(TAG, "lfa_capture=test_gain=%u test_ms=%u control_gain=%u control_ms=%u; 'd'=lights-off raw capture",
+             (unsigned)LFA_TEST_GAIN, (unsigned)LFA_TEST_INTEGRATION_MS,
+             (unsigned)LFA_CONTROL_GAIN, (unsigned)LFA_CONTROL_INTEGRATION_MS);
     s_deps.control_sensor = as7343_create(bus, BOARD_AS7343_I2C_ADDR, s_deps.time);
     ESP_LOGI(TAG, "second/control=AS7343@0x39");
 #endif
@@ -173,9 +191,15 @@ void app_main(void)
         ESP_LOGW(TAG, "LFA unavailable: second/control sensor init: %s; colorimetric remains available",
                  esp_err_to_name(s_deps.control_init_error));
     }
+    ESP_LOGI(TAG, "color_profile=%s colors=white,yellow,turquoise,orange,deep_purple max_distance=%.3f min_margin=%.3f",
+             COLOR_PROFILE_ID, (double)COLOR_MAX_DISTANCE, (double)COLOR_MIN_MARGIN);
 #if CONFIG_DC_LFA_AS7343
     if (LFA_TEST_REF.channel_mask == 0 || LFA_CONTROL_REF.channel_mask == 0) {
         ESP_LOGW(TAG, "LFA calibration required in lfa_refs.h; raw spectra available with 'l'");
+    } else {
+        ESP_LOGI(TAG, "lfa_profile=%s validation=paper_bench_provisional test_threshold=%.6f control_threshold=%.6f",
+                 LFA_PROFILE_ID, (double)LFA_TEST_REF.threshold,
+                 (double)LFA_CONTROL_REF.threshold);
     }
 #endif
 

@@ -44,6 +44,8 @@ enable_testing()
 # Tests mirror the architecture: <layer>/test_<name>.c
 foreach(src
         domain/test_strip_analysis.c
+        domain/test_color_refs.c
+        domain/test_lfa_refs.c
         usecase/test_measurement.c
         adapters/test_mock_sensor.c
         adapters/test_mobiledetect_protocol.c
@@ -54,5 +56,30 @@ foreach(src
     add_executable(${t} ${src})
     target_link_libraries(${t} PRIVATE core_host unity)
     target_compile_options(${t} PRIVATE -Wall -Wextra -Werror)
+    if(t STREQUAL "test_color_refs" OR t STREQUAL "test_lfa_refs")
+        target_include_directories(${t} PRIVATE ${FW}/main)
+    endif()
+    if(t STREQUAL "test_lfa_refs")
+        target_compile_definitions(${t} PRIVATE
+            CONFIG_DC_SENSOR_MOCK=0 CONFIG_DC_SENSOR_TCS3448=1
+            CONFIG_DC_LFA_AS7343=1 CONFIG_DC_SENSOR_LEDS=1 CONFIG_DC_SENSOR_LED_MA=50)
+    endif()
     add_test(NAME ${t} COMMAND ${t})
 endforeach()
+
+# Measured refs must not silently apply to another light setting or sensor setup.
+function(add_lfa_profile_test name mock tcs dual leds ma)
+    add_executable(${name} domain/test_lfa_profile_selection.c)
+    target_link_libraries(${name} PRIVATE core_host unity)
+    target_include_directories(${name} PRIVATE ${FW}/main)
+    target_compile_options(${name} PRIVATE -Wall -Wextra -Werror)
+    target_compile_definitions(${name} PRIVATE
+        CONFIG_DC_SENSOR_MOCK=${mock} CONFIG_DC_SENSOR_TCS3448=${tcs}
+        CONFIG_DC_LFA_AS7343=${dual} CONFIG_DC_SENSOR_LEDS=${leds}
+        CONFIG_DC_SENSOR_LED_MA=${ma})
+    add_test(NAME ${name} COMMAND ${name})
+endfunction()
+add_lfa_profile_test(test_lfa_profile_leds_off 0 1 1 0 50)
+add_lfa_profile_test(test_lfa_profile_leds_20ma 0 1 1 1 20)
+add_lfa_profile_test(test_lfa_profile_single_sensor 0 1 0 1 50)
+add_lfa_profile_test(test_lfa_profile_mock 1 0 0 0 0)

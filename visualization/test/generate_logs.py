@@ -25,4 +25,4 @@ for block in output.split("CASE ")[1:]:
 destination = test / "generated"
 destination.mkdir(exist_ok=True)
 (destination / "logs.json").write_text(json.dumps(fixtures, indent=2) + "\n")
-print(f"Generated {len(fixtures)} synthetic logs through the unchanged firmware log sink.")
+print(f"Generated {len(fixtures)} synthetic logs through the current firmware log sink.")

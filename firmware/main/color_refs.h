@@ -1,58 +1,59 @@
-// Colorimetric reference data: the white calibration and the known pad colors.
-// Included only by main.c.
+// Five-color bench calibration, 2026-11-23. TCS3448 test/color sensor.
+// Measured with both onboard LEDs at 50 mA, 100 ms integration and 256x gain.
+// Channel order: F1 F2 FZ F3 F4 F5 FY FXL F6 F7 F8 NIR VIS FD.
+// The existing 14-channel, equal-weight shape calculation is retained.
 //
-// Channel order matches the TCS3448 driver (adapters/tcs3448/include/tcs3448.h):
-//   F1   F2   FZ   F3   F4   F5   FY   FXL  F6   F7   F8   NIR  VIS  FD
-//   405  425  450  475  515  550  555  600  640  690  745  855  (broad) (flicker)  nm
-//
-// To fill these in with real numbers, in the jig, with the colorimetric
-// measurement settings in main.c:
-//   1. Put a white card where the pad goes and press 'c'. Copy the "raw="
-//      log line into COLOR_WHITE.
-//   2. Reflash, then put each known pad color in and press 'c'. Copy its
-//      "refl=" line into a COLOR_REFS entry.
-// Re-do step 1 whenever the LED, gain, integration time or geometry changes.
-
+// Source: 28 user-labeled averaged serial readings; recorded raw values were
+// rounded to integers. The raw captures and provenance are in
+// test/host/data/five_color_2026_11_23.h and its README. Each reference is its
+// mean raw vector divided by the mean of the five white captures below.
+// Tape-covered green and the earlier yellow positioning batch are excluded.
+// Recalibrate all references together if illumination or geometry changes.
 #pragma once
 #include "strip_types.h"
 
-// Measured 2026-11-23, 100 ms @ 256x: mean of 4 white-card reads.
+#define COLOR_PROFILE_ID "bench5-20261123-map1"
+// Provisional retest limits. Largest distance to its own fitted reference was
+// 0.005; closest reference pair is turquoise/deep_purple at 0.036. The lead
+// requirement rejects close calls even inside the absolute distance cutoff.
+// These captures fit the references; fresh repositioned samples must validate them.
+#define COLOR_MAX_DISTANCE 0.025f
+#define COLOR_MIN_MARGIN 0.010f
+
 static const channel_reading_t COLOR_WHITE = {
-    .values = {51, 130.25, 680.25, 879.75, 716.5, 300.25, 1046.75, 935.75, 876.25, 567.75, 82.25, 50.5, 1280, 35193},
+    .values = {53.00000000f, 168.40000000f, 953.80000000f, 1033.40000000f, 941.40000000f, 335.00000000f, 1199.20000000f, 1050.40000000f, 930.60000000f, 625.60000000f, 93.40000000f, 48.00000000f, 1508.00000000f, 31123.80000000f},
     .count = 14,
 };
 
-// Measured 2026-11-23, same settings: mean of 5 reads per color, divided by
-// COLOR_WHITE above (recomputed from raw=, since the logged refl= was against
-// the old white). Read-to-read spread <= 0.008 RMS.
-// TODO(team): placeholder mapping (red = fentanyl, green = cocaine, yellow =
-// psychedelics) for test-paper colors, not real reagent reactions. Turquoise
-// (general explosives) was dropped 2026-11-23: its shape is 0.080 from green
-// and a re-read under drifted lighting fell outside the match distance.
+// User-selected display mappings, 2026-11-23. Color references and thresholds
+// are unchanged; these labels do not establish chemical identity.
+// Retain the existing bench verdict convention: white = NEGATIVE control,
+// a recognized colored reference = POSITIVE, rejected/ambiguous = INVALID.
+// These verdicts are not validated assay interpretations.
 static const color_ref_t COLOR_REFS[] = {
-    {   // TODO(team): white card, all 1.0 by definition. Replace with the
-        // refl= line of a few real unused pads; they're rarely pure white.
+    {
         .name = "control", .color = "white", .verdict = STRIP_NEGATIVE,
-        .reflectance = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-    },
-    {
-        .name = "fentanyl", .color = "red", .verdict = STRIP_POSITIVE,
-        .reflectance = {0.906, 0.662, 0.577, 0.754, 0.687, 0.671, 0.706, 0.828, 0.978, 1.011, 0.987, 0.891, 0.862, 0.749},
-    },
-    {
-        .name = "cocaine", .color = "green", .verdict = STRIP_POSITIVE,
-        .reflectance = {0.843, 0.590, 0.514, 0.655, 0.754, 0.625, 0.638, 0.626, 0.604, 0.666, 0.749, 0.610, 0.640, 0.583},
+        .max_distance = COLOR_MAX_DISTANCE,
+        .reflectance = {1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f, 1.00000000f},
     },
     {
         .name = "psychedelics", .color = "yellow", .verdict = STRIP_POSITIVE,
-        .reflectance = {0.792, 0.534, 0.413, 0.533, 0.756, 0.682, 0.740, 0.808, 0.808, 0.828, 0.795, 0.832, 0.738, 0.632},
+        .max_distance = COLOR_MAX_DISTANCE,
+        .reflectance = {0.94339623f, 0.71852732f, 0.66156427f, 0.78317528f, 0.85015226f, 0.88358209f, 0.91060707f, 0.94027672f, 0.99362419f, 0.99744246f, 1.00642398f, 0.97916667f, 0.88373121f, 0.95230445f},
+    },
+    {
+        .name = "fentanyl", .color = "turquoise", .verdict = STRIP_POSITIVE,
+        .max_distance = COLOR_MAX_DISTANCE,
+        .reflectance = {0.92452830f, 0.77197150f, 0.75400154f, 0.84768725f, 0.82607464f, 0.79253731f, 0.82888592f, 0.79271389f, 0.80145426f, 0.83280051f, 0.89935760f, 0.87500000f, 0.80713970f, 0.88821095f},
+    },
+    {
+        .name = "cocaine", .color = "orange", .verdict = STRIP_POSITIVE,
+        .max_distance = COLOR_MAX_DISTANCE,
+        .reflectance = {0.92452830f, 0.70665083f, 0.64706088f, 0.76914393f, 0.74746831f, 0.77412935f, 0.83180454f, 0.87093806f, 0.97643098f, 0.98811807f, 0.99571734f, 0.95833333f, 0.82979664f, 0.91455199f},
+    },
+    {
+        .name = "explosives", .color = "deep_purple", .verdict = STRIP_POSITIVE,
+        .max_distance = COLOR_MAX_DISTANCE,
+        .reflectance = {0.91037736f, 0.72669240f, 0.67938771f, 0.78829592f, 0.72843637f, 0.75783582f, 0.79761508f, 0.78589109f, 0.79934988f, 0.82960358f, 0.88998929f, 0.86458333f, 0.76931366f, 0.87233484f},
     },
 };
-
-// RMS shape distance (each spectrum divided by its own mean, see
-// strip_analysis.c) allowed before the pad counts as "no known color"
-// (INVALID). From the 2026-11-23 refs: closest pair red vs yellow 0.117, then
-// white vs green 0.123; a green re-read 25% dimmer landed 0.028 from green.
-// Could go up to ~0.058 (half the closest gap) for more drift tolerance. Shape matching can't tell white from an even
-// grey. TODO(team): re-tune once the rig is stable and real pads are read.
-#define COLOR_MAX_DISTANCE 0.04f

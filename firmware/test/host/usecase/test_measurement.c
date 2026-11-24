@@ -9,11 +9,12 @@ typedef struct {
     optical_sensor_t port;
     int id, inits, reads, configs;
     uint16_t ms, gain;
-    float value;
+    float value, step;
     esp_err_t init_error, read_error, config_error;
 } sensor_fake_t;
 static sensor_fake_t t, c;
 static int order[64], order_count;
+static bool expect_dark;
 static measurement_deps_t deps;
 static measurement_config_t cfg;
 static esp_err_t init(void *ctx) { sensor_fake_t *s = ctx; s->inits++; return s->init_error; }
@@ -24,8 +25,14 @@ static esp_err_t gain(void *ctx, uint16_t g)
 static esp_err_t read_sensor(void *ctx, channel_reading_t *out)
 {
     sensor_fake_t *s = ctx;
+    if (expect_dark) {
+        fake_illuminator_state_t *light = fake_illuminator_state();
+        TEST_ASSERT_TRUE(light->call_count > 0);
+        TEST_ASSERT_FALSE(light->calls[light->call_count - 1].on);
+        TEST_ASSERT_EQUAL(0, light->calls[light->call_count - 1].intensity_pct);
+    }
     s->reads++; order[order_count++] = s->id;
-    *out = (channel_reading_t){.values = {s->value}, .count = 1};
+    *out = (channel_reading_t){.values = {s->value + (s->reads - 1) * s->step}, .count = 1};
     return s->read_error;
 }
 static sensor_fake_t sensor(int id, float value)
@@ -56,6 +63,7 @@ void setUp(void)
     t = sensor(1, 200); c = sensor(2, 1000);
     t.port.ctx = &t; c.port.ctx = &c;
     order_count = 0;
+    expect_dark = false;
     deps = (measurement_deps_t){.color_sensor = &t.port, .test_sensor = &t.port,
         .control_sensor = &c.port, .light = fake_illuminator_create(),
         .time = fake_timebase_create(), .sink = fake_sink_create()};
@@ -185,6 +193,100 @@ static void test_mock_instances_have_independent_streams(void)
     bs->read(bs->ctx, &raw); TEST_ASSERT_EQUAL_FLOAT(9, raw.values[0]);
     as->read(as->ctx, &raw); TEST_ASSERT_EQUAL_FLOAT(2, raw.values[0]);
 }
+
+static void test_dark_capture_keeps_lights_off_preserves_fractions_and_does_not_publish(void)
+{
+    expect_dark = true;
+    t.value = 0; c.value = 2; t.step = c.step = 1;
+    cfg.sample_count = 2; cfg.gain = 128;
+    lfa_dark_capture_t dark;
+    TEST_ASSERT_EQUAL(ESP_OK, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    const int expected[] = {1, 2, 1, 2};
+    TEST_ASSERT_EQUAL_INT_ARRAY(expected, order, 4);
+    TEST_ASSERT_EQUAL_FLOAT(0.5f, dark.test_raw.values[0]);
+    TEST_ASSERT_EQUAL_FLOAT(2.5f, dark.control_raw.values[0]);
+    TEST_ASSERT_EQUAL(2, dark.sample_count);
+    TEST_ASSERT_EQUAL(128, t.gain); TEST_ASSERT_EQUAL(t.gain, dark.test_gain);
+    TEST_ASSERT_EQUAL(64, c.gain); TEST_ASSERT_EQUAL(c.gain, dark.control_gain);
+    TEST_ASSERT_EQUAL(100, t.ms); TEST_ASSERT_EQUAL(t.ms, dark.test_integration_ms);
+    TEST_ASSERT_EQUAL(75, c.ms); TEST_ASSERT_EQUAL(c.ms, dark.control_integration_ms);
+    TEST_ASSERT_EQUAL(50, fake_timebase_total_ms());
+    TEST_ASSERT_EQUAL(0, fake_sink_state()->publish_count);
+    TEST_ASSERT_EQUAL(2, fake_illuminator_state()->call_count);
+    for (size_t i = 0; i < 2; i++) {
+        TEST_ASSERT_FALSE(fake_illuminator_state()->calls[i].on);
+        TEST_ASSERT_EQUAL(0, fake_illuminator_state()->calls[i].intensity_pct);
+    }
+    // A normal request immediately afterward must turn illumination on again.
+    expect_dark = false;
+    strip_result_t result;
+    TEST_ASSERT_EQUAL(ESP_OK, measurement_run(&deps, &cfg, &result));
+    TEST_ASSERT_TRUE(fake_illuminator_state()->calls[2].on);
+    TEST_ASSERT_EQUAL(100, fake_illuminator_state()->calls[2].intensity_pct);
+    TEST_ASSERT_FALSE(fake_illuminator_state()->calls[3].on);
+    TEST_ASSERT_EQUAL(1, fake_sink_state()->publish_count);
+}
+
+static void test_dark_capture_refuses_acquisition_when_lights_cannot_be_turned_off(void)
+{
+    fake_illuminator_state()->fail_call = 1;
+    fake_illuminator_state()->set_error = ESP_FAIL;
+    lfa_dark_capture_t dark = {.sample_count = 99, .test_raw = {.count = 1}};
+    TEST_ASSERT_EQUAL(ESP_FAIL, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    TEST_ASSERT_EQUAL(0, order_count);
+    TEST_ASSERT_EQUAL(0, dark.sample_count);
+    TEST_ASSERT_EQUAL(0, dark.test_raw.count);
+    TEST_ASSERT_EQUAL(0, fake_sink_state()->publish_count);
+}
+
+static void test_failed_dark_capture_discards_partial_and_previous_samples(void)
+{
+    expect_dark = true;
+    lfa_dark_capture_t dark;
+    TEST_ASSERT_EQUAL(ESP_OK, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    c.read_error = ESP_ERR_INVALID_RESPONSE;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_RESPONSE, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    TEST_ASSERT_EQUAL(0, dark.sample_count);
+    TEST_ASSERT_EQUAL(0, dark.test_raw.count);
+    TEST_ASSERT_EQUAL(0, dark.control_raw.count);
+    TEST_ASSERT_FALSE(fake_illuminator_state()->calls[3].on);
+    TEST_ASSERT_EQUAL(0, fake_sink_state()->publish_count);
+}
+
+static void test_dark_capture_requires_both_zones_and_lfa_settings(void)
+{
+    lfa_dark_capture_t dark;
+    deps.control_sensor = NULL;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    deps.control_sensor = deps.test_sensor;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    deps.control_sensor = &c.port;
+    deps.control_init_error = ESP_ERR_NOT_FOUND;
+    TEST_ASSERT_EQUAL(ESP_ERR_NOT_FOUND, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    deps.control_init_error = ESP_OK;
+    color_mode();
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, measurement_capture_lfa_dark(&deps, NULL, &dark));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, measurement_capture_lfa_dark(&deps, &cfg, NULL));
+    TEST_ASSERT_EQUAL(0, order_count);
+    TEST_ASSERT_EQUAL(0, fake_sink_state()->publish_count);
+}
+
+static void test_dark_capture_rejects_config_and_final_light_off_failures(void)
+{
+    expect_dark = true;
+    lfa_dark_capture_t dark;
+    t.config_error = ESP_FAIL;
+    TEST_ASSERT_EQUAL(ESP_FAIL, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    TEST_ASSERT_FALSE(fake_illuminator_state()->calls[0].on);
+    TEST_ASSERT_EQUAL(0, order_count);
+    t.config_error = ESP_OK;
+    fake_illuminator_state()->fail_call = 3;
+    fake_illuminator_state()->set_error = ESP_FAIL;
+    TEST_ASSERT_EQUAL(ESP_FAIL, measurement_capture_lfa_dark(&deps, &cfg, &dark));
+    TEST_ASSERT_EQUAL(0, dark.sample_count);
+    TEST_ASSERT_EQUAL(0, fake_sink_state()->publish_count);
+}
 int main(void)
 {
     UNITY_BEGIN();
@@ -197,5 +299,10 @@ int main(void)
     RUN_TEST(test_config_failure_and_bad_inputs_do_not_publish);
     RUN_TEST(test_uncalibrated_lfa_logs_both_zones_as_invalid);
     RUN_TEST(test_mock_instances_have_independent_streams);
+    RUN_TEST(test_dark_capture_keeps_lights_off_preserves_fractions_and_does_not_publish);
+    RUN_TEST(test_dark_capture_refuses_acquisition_when_lights_cannot_be_turned_off);
+    RUN_TEST(test_failed_dark_capture_discards_partial_and_previous_samples);
+    RUN_TEST(test_dark_capture_requires_both_zones_and_lfa_settings);
+    RUN_TEST(test_dark_capture_rejects_config_and_final_light_off_failures);
     return UNITY_END();
 }

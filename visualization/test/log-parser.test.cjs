@@ -7,7 +7,7 @@ const parse = text => {const p=new LogParser();return [...p.feed(text),...p.fini
 const last = events => events.filter(e=>e.result).at(-1)?.result;
 let passed=0;
 function check(name,fn){fn();passed++;console.log(`PASS ${name}`);}
-for(const fixture of fixtures)check(`Unchanged C log -> UI data: ${fixture.name}`,()=>{
+for(const fixture of fixtures.filter(f=>f.name!=="lfa_dark"))check(`Firmware C log -> UI data: ${fixture.name}`,()=>{
   const r=last(parse(fixture.log));
   assert(r);
   const summary=fixture.log.match(/mode=.*\n/)[0].trim();
@@ -24,6 +24,46 @@ for(const fixture of fixtures)check(`Unchanged C log -> UI data: ${fixture.name}
     const exact=fixture.log.match(new RegExp(`log_sink: ${key}=(.*)`))[1].trim().replace(/,\s*$/,"").split(",").map(v=>v.trim());
     assert.deepEqual(r[key],exact);
   }
+  const diagnostic=fixture.log.match(/color_match: (.*)/)?.[1];
+  if(diagnostic){
+    for(const [field,key] of [["match_status","status"],["nearest_color","nearest"],["runner_up_color","runner_up"],
+      ["runner_up_score","runner_up_score"],["color_margin","margin"],["max_distance","max_distance"],["min_margin","min_margin"]])
+      assert.equal(r[field],diagnostic.match(new RegExp(`(?:^| )${key}=(\\S+)`))[1]);
+    assert(r.log_lines.some(line=>line.includes("color_match:")));
+  }
+});
+check("Dark captures preserve fractional counts without producing assay results",()=>{
+  const dark=fixtures.find(f=>f.name==="lfa_dark").log;
+  assert(dark.includes("capture=LFA_DARK illumination=off samples=5 test_gain=128 test_ms=100 control_gain=64 control_ms=100"));
+  assert(dark.includes("dark_test_raw=0.200, 0.400,"));
+  assert(dark.includes("dark_control_raw=0.600, 0.800,"));
+  assert(!parse(dark).some(e=>e.result));
+  const p=new LogParser();
+  const normal=fixtures.find(f=>f.name==="uncalibrated_lfa").log;
+  p.feed(normal.split("\n").slice(0,2).join("\n")+"\n");
+  const events=p.feed(dark.split("\n").slice(1).join("\n")+"I (200) log_sink: test_raw=1, 2,\n");
+  assert(!events.some(e=>e.result));
+  assert(events.some(e=>e.line?.includes("dark_test_raw=")));
+  assert(last(p.feed(normal)));
+});
+check("All five colors retain their configured match labels",()=>{
+  const labels={white:"control",yellow:"psychedelics",turquoise:"fentanyl",orange:"cocaine",deep_purple:"explosives"};
+  for(const [color,match] of Object.entries(labels)){
+    const r=last(parse(fixtures.find(f=>f.name===`${color}_full`).log));
+    assert.equal(r.color,color);assert.equal(r.match,match);assert.equal(r.match_status,"matched");
+  }
+});
+check("Ambiguous firmware results stay rejected with their diagnostics",()=>{
+  const r=last(parse(fixtures.find(f=>f.name==="ambiguous_color").log));
+  assert.equal(r.verdict,"INVALID");assert.equal(r.color,"none");assert.equal(r.match_status,"ambiguous");
+  assert.equal(r.max_distance,"0.025");assert.equal(r.min_margin,"0.010");
+  assert.deepEqual(new Set([r.nearest_color,r.runner_up_color]),new Set(["turquoise","deep_purple"]));
+});
+check("Diagnostics are copied even when their numbers contradict their status",()=>{
+  const r=last(parse("log_sink: mode=COLORIMETRIC verdict=POSITIVE match=deep_purple color=deep_purple score=99.999 control=0.00 samples=5\n"+
+    "log_sink: color_match: status=matched nearest=deep_purple runner_up=orange runner_up_score=0.000001 margin=-99.998999 max_distance=0.025 min_margin=0.010\n"));
+  assert.equal(r.verdict,"POSITIVE");assert.equal(r.color,"deep_purple");assert.equal(r.match_status,"matched");
+  assert.equal(r.color_margin,"-99.998999");
 });
 check("Every byte split, ANSI escapes and CRLF preserve output",()=>{
   const text=fixtures[4].log.replaceAll("I (","\x1b[0;32mI (").replaceAll("\n","\x1b[0m\r\n");

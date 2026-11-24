@@ -115,6 +115,10 @@
         <div class="test-type-field"><dt>Test type</dt><dd id="test-type">—</dd></div>
         <div class="detail-field"><dt>Matched color</dt><dd id="matched-color">—</dd></div>
         <div class="detail-field"><dt>Match (logged)</dt><dd id="reference">—</dd></div>
+        <div class="detail-field"><dt>Match decision (logged)</dt><dd id="match-status">—</dd></div>
+        <div class="detail-field"><dt>Nearest color (logged)</dt><dd id="nearest-color">—</dd></div>
+        <div class="detail-field"><dt>Next closest color (logged)</dt><dd id="runner-up-color">—</dd></div>
+        <div><dt>Distance lead (logged)</dt><dd id="color-margin">—</dd></div>
         <div><dt id="score-label">Score (logged)</dt><dd id="score">—</dd></div>
         <div><dt>Control (logged)</dt><dd id="control-score">—</dd></div>
         <div><dt>Sample count</dt><dd id="sample-count">—</dd></div>
@@ -147,7 +151,7 @@
     </section>
     </div>
     <details class="console"><summary>Received log · latest 2,000 lines</summary><pre id="serial-log"></pre></details>
-    <p class="footnote">This page displays firmware output; it does not classify samples, normalize spectra, apply thresholds, or infer missing values. Current substance names are prototype test-paper labels from the firmware. Missing fields are marked “Not reported.” USB commands send the same c/l keys as the serial monitor.</p>
+    <p class="footnote">Values and verdicts are copied from the firmware. The five-color bench profile identifies sample colors. Missing fields are marked “Not reported.” USB commands send the same c/l keys as the serial monitor.</p>
     <noscript><p>Enable JavaScript to display log output.</p></noscript>
   </main>
   <script src="log-parser.js"></script>

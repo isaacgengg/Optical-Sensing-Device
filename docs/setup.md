@@ -54,6 +54,7 @@ python3 tools/run.py tcs3448 /dev/ttyUSB0
 ```
 Use your own port. Then, in the monitor:
 - press **`l`** (lateral flow) or **`c`** (colorimetric) to take a measurement; the serial console stands in for the device keypad
+- press **`d`** for an LFA dark-reference capture with all illumination off; shield the assembled module from room light and follow the [dark-capture instructions](dual-sensor-lfa.md#dark-capture-output)
 - press the board's **EN** (or **RST**) button to restart it and see the boot log from the top
 - quit with **Ctrl+]**
 
@@ -80,6 +81,75 @@ Everything the script can do:
 - The script prints each command before running it, so you can see what it's doing or rerun a step by hand.
 
 See [dual-sensor LFA](dual-sensor-lfa.md) for two-zone wiring, calibration and bench checks.
+
+### Five-color retest at 50 mA
+
+The `bench5-20261123-map1` profile recognizes **white, yellow, turquoise, orange,
+and deep_purple**. It uses the 28 labeled readings collected on November 23:
+5 white, 3 yellow, 6 turquoise, 6 orange and 8 deep purple. The five white
+readings supply the new white baseline. The withdrawn, tape-covered green
+readings and the earlier yellow positioning trial are excluded.
+
+Keep acquisition at **100 ms, 256x gain, 5 samples, 50 mA onboard LEDs**.
+The firmware divides by the white baseline, normalizes each spectrum by its
+mean, and compares all 14 channels. A match must have an RMS distance of at
+most **0.025** and lead the next closest color by at least **0.010**. These
+provisional limits replace the earlier yellow 0.09 / other colors 0.04 trial.
+The fitted readings are within 0.005 of their own reference; the closest two
+reference shapes are about 0.036 apart. Those are fitting checks, not an
+independent accuracy measurement.
+
+On Arun's Mac, exit the serial monitor with **Ctrl+]** and disconnect the
+browser's USB connection before flashing, then run from the repository root:
+
+```sh
+python3.12 tools/run.py dual /dev/cu.usbserial-0001 --sensor-leds --sensor-led-ma 50
+```
+
+The script builds, flashes and opens the monitor. Confirm both startup lines:
+
+```text
+light=GPIO4 + sensor onboard LEDs @ 50 mA
+color_profile=bench5-20261123-map1 colors=white,yellow,turquoise,orange,deep_purple max_distance=0.025 min_margin=0.010
+```
+
+For each color, hold the sample still and press `c` five times, waiting for
+each result. Then remove and reinsert it for five more readings. Keep the
+LED setting, distance and illumination consistent. Save the summary,
+`color_match`, `raw` and `refl` lines, noting which readings were repositioned.
+
+- `status=matched`: the nearest color passed both checks.
+- `status=too_far`: the nearest reference exceeded its distance limit.
+- `status=ambiguous`: two references were too close to choose reliably.
+
+Rejected results keep `match=none color=none`; the separate diagnostic line
+still names the nearest and next closest colors and their distance lead.
+The `color` field keeps the measured color name. The `match` field uses
+Arun's selected display mapping:
+
+| Color | `match` label |
+| --- | --- |
+| white | control |
+| yellow | psychedelics |
+| turquoise | fentanyl |
+| orange | cocaine |
+| deep_purple | explosives |
+
+The `map1` update changes these labels only; the measured references, shape
+calculation and limits are unchanged. For this bench profile, `NEGATIVE`
+means matched white, `POSITIVE` means a recognized non-white color, and
+`INVALID` means no accepted match. These configured labels do not establish
+substance identity. For example, yellow now logs
+`verdict=POSITIVE match=psychedelics color=yellow`; rejected readings still
+log `match=none color=none`.
+
+Refresh the visualization to show the new diagnostic fields. It copies the
+firmware's decisions and scores without classifying in the browser. Older
+logs still display, with missing diagnostics shown as not reported.
+
+Keep `--sensor-led-ma 50` on subsequent builds: omitting it resets the
+LED-enabled build to its 20 mA default. `ESP_ERR_INVALID_RESPONSE` acquisition
+failures still need to be resolved separately from color-match cutoffs.
 
 ### What a good TCS3448 run looks like
 
@@ -111,5 +181,5 @@ TCS3448 wiring on the devkit (from `firmware/main/board.h`): **SDA → GPIO21, S
 | `python3` or `py` "is not recognized" (Windows) | Reinstall Python with "Add python.exe to PATH" ticked |
 | Boot log has no `i2c_bus` lines | You flashed the mock build. Run `tcs3448` |
 | `i2c_bus: scan done, 0 device(s)` | Wiring: check SDA/SCL aren't swapped, and the 3V3 and GND connections |
-| `measurement failed: ESP_ERR_INVALID_RESPONSE` | The sensor is saturated (too much light at 256x gain). Cover it or dim the light |
+| `measurement failed: ESP_ERR_INVALID_RESPONSE` | Check the preceding saturation warning for the sensor name/address. For LFA, lower that zone's gain in `firmware/main/lfa_refs.h`, rebuild/flash, then collect calibration references at the new setting. Retest defaults are TCS3448 test at 128x and AS7343 control at 64x after saturation at 256x with 50 mA LEDs. |
 | `measurement failed: ESP_ERR_TIMEOUT` | Your copy predates the timebase fix (PR #10). Run `git pull` and rebuild |

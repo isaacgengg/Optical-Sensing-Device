@@ -8,7 +8,10 @@ channel_reading_t strip_average(const channel_reading_t *samples, size_t n);
 
 // Colorimetric: averages the samples, divides by cfg->white to get reflectance,
 // and returns the verdict of the closest cfg->refs entry. STRIP_INVALID if the
-// config is incomplete, channel counts differ, or no ref is within max_distance.
+// config is incomplete, channel counts differ, or the nearest ref exceeds its
+// max_distance (0 on a ref inherits the cutoff from the config), or the lead
+// over the runner-up is less than min_color_margin. A zero margin disables
+// ambiguity rejection. color_match reports candidates/rejection when scored.
 strip_result_t strip_analyze(const channel_reading_t *samples, size_t n,
                              const strip_config_t *cfg);
 

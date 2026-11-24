@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><title>Log viewer integration checks</title>
 <style>body{font:15px/1.5 system-ui;margin:24px;color:#193941}iframe{width:100%;height:1100px;border:1px solid #bacacc}.pass{color:#176a4c}.fail{color:#b42318}</style>
-<h1>Log viewer integration checks</h1><p>Synthetic samples run through the unchanged firmware analysis and log sink. No physical readings are claimed.</p>
+<h1>Log viewer integration checks</h1><p>Synthetic samples run through the current firmware analysis and log sink. No physical readings are claimed.</p>
 <p id="summary">Running…</p><ul id="checks"></ul><iframe id="app" title="Log viewer under test" src="../index.html"></iframe>
 <script>
 const frame=document.getElementById("app");let passed=0,failed=0;
@@ -13,15 +13,24 @@ frame.addEventListener("load",async()=>{
  const text=id=>doc.getElementById(id).textContent;
  const rows=()=>Array.from(doc.querySelectorAll("#history tr:not(#empty)"));
  let fixtures;
- await check("Fixtures come from the real, unchanged firmware log sink",async()=>{const r=await fetch("generated/logs.json",{cache:"no-store"});assert(r.ok,"Run python3 visualization/test/generate_logs.py first");fixtures=await r.json();assert(fixtures.length >= 4);});
+ await check("Fixtures come from the real, current firmware log sink",async()=>{const r=await fetch("generated/logs.json",{cache:"no-store"});assert(r.ok,"Run python3 visualization/test/generate_logs.py first");fixtures=await r.json();assert(fixtures.length >= 4);});
  if(!fixtures){document.getElementById("summary").textContent=`${passed} passed, ${failed} failed`;return;}
  const fixture=name=>fixtures.find(f=>f.name===name).log;
  await check("Empty state has no fabricated outputs",()=>{equal(text("verdict"),"—");assert(doc.getElementById("export").disabled);});
- for(const f of fixtures)await check(`Exact log values render: ${f.name}`,()=>{
+ for(const f of fixtures.filter(f=>f.name!=="lfa_dark"))await check(`Exact log values render: ${f.name}`,()=>{
    app.ingestLog(f.log,"Synthetic host log");
    const summary=f.log.match(/mode=.*\n/)[0];
    for(const [field,id] of [["verdict","verdict"],["mode","test-type"],["match","reference"],["color","matched-color"],["score","score"],["control","control-score"],["samples","sample-count"]])equal(text(id),summary.match(new RegExp(`(?:^| )${field}=(\\S+)`))[1]);
    equal(doc.querySelectorAll("#spectra tr").length,14);assert(text("result-source").includes("source=MOCK"));equal(rows()[0].children.length,9);
+   const diagnostic=f.log.match(/color_match: (.*)/)?.[1];
+   if(diagnostic){
+     for(const [field,id] of [["status","match-status"],["nearest","nearest-color"],["runner_up","runner-up-color"],["margin","color-margin"]])equal(text(id),diagnostic.match(new RegExp(`(?:^| )${field}=(\\S+)`))[1]);
+     assert(text("result-log").includes("color_match:"));
+   }else{equal(text("match-status"),"Not reported");equal(text("nearest-color"),"Not reported");equal(text("color-margin"),"—");}
+ });
+ await check("Dark captures stay in the log without changing assay history",()=>{
+   const count=rows().length,latest=doc.querySelector("dl").textContent;
+   app.ingestLog(fixture("lfa_dark"));equal(rows().length,count);equal(doc.querySelector("dl").textContent,latest);
  });
  await check("Missing LFA calibration displays logged zeros unchanged",()=>{app.ingestLog(fixture("uncalibrated_lfa"));equal(text("score"),"0.000");equal(text("control-score"),"0.00");equal(text("calibration"),"missing_or_invalid");});
  await check("Pasted output uses the same path and preserves unexpected scores",()=>{
@@ -29,12 +38,13 @@ frame.addEventListener("load",async()=>{
    doc.getElementById("import").click();equal(text("verdict"),"NEGATIVE");equal(text("score"),"123.456");equal(text("control-score"),"8.70");equal(text("matched-color"),"purple");equal(text("calibration"),"Not reported in log");assert(text("result-source").includes("source=not reported"));
  });
  await check("Saved files feed the same parser",async()=>{
-   const input=doc.getElementById("log-file");const transfer=new app.DataTransfer();transfer.items.add(new app.File([fixture("red_full")],"capture.txt",{type:"text/plain"}));input.files=transfer.files;input.dispatchEvent(new app.Event("change"));
+   const input=doc.getElementById("log-file");const transfer=new app.DataTransfer();transfer.items.add(new app.File([fixture("deep_purple_full")],"capture.txt",{type:"text/plain"}));input.files=transfer.files;input.dispatchEvent(new app.Event("change"));
    for(let i=0;i<10&&!text("result-source").includes("capture.txt");i++)await tick();
-   equal(text("matched-color"),"red");assert(text("result-source").includes("File: capture.txt"));
+   equal(text("matched-color"),"deep_purple");assert(text("result-source").includes("File: capture.txt"));
  });
  await check("Acquisition error is shown without inventing a verdict",()=>{app.ingestLog("W (123) main: measurement failed: ESP_ERR_INVALID_RESPONSE\n");equal(text("verdict"),"No verdict reported");equal(text("score"),"—");assert(text("result-note").includes("ESP_ERR_INVALID_RESPONSE"));});
- await check("Invalid summary cannot overwrite an existing result",()=>{app.ingestLog(fixture("green_full"));const count=rows().length,latest=doc.querySelector("dl").textContent;app.ingestLog("log_sink: mode=COLORIMETRIC broken\nlog_sink: raw=9, 9,\n");equal(rows().length,count);equal(doc.querySelector("dl").textContent,latest);});
+ await check("Invalid summary cannot overwrite an existing result",()=>{app.ingestLog(fixture("turquoise_full"));const count=rows().length,latest=doc.querySelector("dl").textContent;app.ingestLog("log_sink: mode=COLORIMETRIC broken\nlog_sink: raw=9, 9,\n");equal(rows().length,count);equal(doc.querySelector("dl").textContent,latest);});
+ await check("Ambiguous result diagnostics and CSV remain literal",()=>{app.ingestLog(fixture("ambiguous_color"));equal(text("matched-color"),"none");equal(text("verdict"),"INVALID");equal(text("match-status"),"ambiguous");assert(app.csvText().includes('"ambiguous"'));assert(app.csvText().includes('"0.025","0.010"'));});
  await check("CSV includes the exact logged labels, values and vectors",()=>{const csv=app.csvText();assert(csv.includes('"custom","purple","123.456","8.70","9"'));assert(csv.includes("raw,test_raw,control_raw,refl,error"));equal(csv.trim().split("\r\n").length,rows().length+1);});
  await check("Log content is displayed as text, not HTML",()=>{app.ingestLog("log_sink: mode=COLORIMETRIC verdict=INVALID match=<b>hello</b> color=none score=0.000 control=0.00 samples=5\n");equal(text("reference"),"<b>hello</b>");assert(!doc.querySelector("#reference b"));});
  let controller,portOptions,closed=0;const sent=[];
@@ -50,7 +60,7 @@ frame.addEventListener("load",async()=>{
  await check("Reconnect does not reuse partial lines or prior source",async()=>{port=fakePort();doc.getElementById("connect").click();await tick();controller.enqueue(new TextEncoder().encode("log_sink: mode=COLORIMETRIC verdict=INVALID match=none color=none score=0.000 control=0.00 samples=5\n"));await tick();assert(text("result-source").includes("source=not reported"));equal(text("reference"),"none");});
  await check("Serial read failure restores usable controls",async()=>{controller.error(Error("Cable removed"));await tick();equal(text("status"),"Disconnected");assert(!doc.getElementById("connect").disabled);assert(doc.getElementById("measure-lfa").disabled);assert(text("note").includes("Cable removed"));equal(closed,2);});
  await check("Reload clears temporary history",async()=>{const loaded=new Promise(resolve=>frame.addEventListener("load",resolve,{once:true}));frame.src="../index.html?reload-log-test";await loaded;app=frame.contentWindow;doc=frame.contentDocument;equal(rows().length,0);equal(text("verdict"),"—");assert(doc.getElementById("export").disabled);});
- app.ingestLog(fixture("green_full"),"Synthetic host test log");
+ app.ingestLog(fixture("turquoise_full"),"Synthetic host test log");
  document.getElementById("summary").textContent=`${passed} passed, ${failed} failed`;
 },{once:true});
 </script></html>

@@ -4,6 +4,7 @@
   const number = "[-+]?(?:(?:\\d+\\.?\\d*|\\.\\d+)(?:e[-+]?\\d+)?|inf|nan)";
   const numeric = new RegExp(`^${number}$`, "i");
   const summary = new RegExp(`^mode=(LATERAL_FLOW|COLORIMETRIC) verdict=(NEGATIVE|POSITIVE|INVALID) match=(\\S+) color=(\\S+) score=(${number}) control=(${number}) samples=(\\d+)\\s*$`, "i");
+  const colorMatch = new RegExp(`^color_match: status=(\\S+) nearest=(\\S+) runner_up=(\\S+) runner_up_score=(${number}) margin=(${number}) max_distance=(${number}) min_margin=(${number})\\s*$`, "i");
   const clean = text => text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").replace(/\r$/, "");
 
   class LogParser {
@@ -52,6 +53,8 @@
       }
       const message = line.match(/\blog_sink:\s*(.*)$/)?.[1];
       if (message == null) return events;
+      // Calibration captures are raw log data, never assay history entries.
+      if (message.startsWith("capture=")) { this.current = null; return events; }
       if (message.startsWith("mode=")) {
         this.current = null;
         const match = message.match(summary);
@@ -63,14 +66,20 @@
           id:++this.nextId, mode:match[1], verdict:match[2], match:match[3], color:match[4],
           score:match[5], control:match[6], samples:match[7], uptime_ms:uptime,
           hardware_source:this.source, calibration:null, metric:null, zones:null,
+          match_status:null, nearest_color:null, runner_up_color:null, runner_up_score:null,
+          color_margin:null, max_distance:null, min_margin:null,
           raw:null, test_raw:null, control_raw:null, refl:null, log_lines:[line]
         };
         events.push({type:"result", result:this.snapshot()});
         return events;
       }
       if (!this.current) return events;
+      const color = message.match(colorMatch);
       const zones = message.match(/^zones:\s*(.*);\s*metric=(\S+)\s+calibration=(\S+)\s*$/);
-      if (zones && this.current.mode === "LATERAL_FLOW" && this.current.zones == null) {
+      if (color && this.current.mode === "COLORIMETRIC" && this.current.match_status == null) {
+        Object.assign(this.current, {match_status:color[1], nearest_color:color[2], runner_up_color:color[3],
+          runner_up_score:color[4], color_margin:color[5], max_distance:color[6], min_margin:color[7]});
+      } else if (zones && this.current.mode === "LATERAL_FLOW" && this.current.zones == null) {
         Object.assign(this.current, {zones:zones[1], metric:zones[2], calibration:zones[3]});
       } else {
         const channels = message.match(/^(raw|test_raw|control_raw|refl)=(.*)$/);

@@ -18,12 +18,12 @@ static esp_err_t console_init(void *ctx)
     // RX only; logging keeps writing to the console as before.
     esp_err_t err = uart_driver_install(CONSOLE_UART, 256, 0, 0, NULL, 0);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "press 'l' for lateral flow, 'c' for colorimetric");
+        ESP_LOGI(TAG, "press 'l' for lateral flow, 'c' for colorimetric, 'd' for LFA dark capture (lights off)");
     }
     return err;
 }
 
-static esp_err_t console_wait_request(void *ctx, strip_mode_t *out_mode)
+static esp_err_t console_wait_request(void *ctx, measurement_command_t *out_command)
 {
     (void)ctx;
     for (;;) {
@@ -34,15 +34,18 @@ static esp_err_t console_wait_request(void *ctx, strip_mode_t *out_mode)
         }
         switch (n == 1 ? c : 0) {
         case 'l': case 'L':
-            *out_mode = STRIP_MODE_LATERAL_FLOW;
+            *out_command = COMMAND_LATERAL_FLOW;
             return ESP_OK;
         case 'c': case 'C':
-            *out_mode = STRIP_MODE_COLORIMETRIC;
+            *out_command = COMMAND_COLORIMETRIC;
+            return ESP_OK;
+        case 'd': case 'D':
+            *out_command = COMMAND_LFA_DARK;
             return ESP_OK;
         case 0: case '\r': case '\n':
             break;
         default:
-            ESP_LOGI(TAG, "unknown key; press 'l' or 'c'");
+            ESP_LOGI(TAG, "unknown key; press 'l', 'c' or 'd'");
         }
     }
 }

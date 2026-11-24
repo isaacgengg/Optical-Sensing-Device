@@ -34,3 +34,9 @@ esp_err_t measurement_init(measurement_deps_t *deps);
 esp_err_t measurement_run(const measurement_deps_t *deps,
                           const measurement_config_t *cfg,
                           strip_result_t *out_result);
+
+// Uses the LFA sensor settings, forces illumination off, and returns averaged
+// raw spectra. Never runs classification or publishes to the result sink.
+esp_err_t measurement_capture_lfa_dark(const measurement_deps_t *deps,
+                                       const measurement_config_t *cfg,
+                                       lfa_dark_capture_t *out_capture);
